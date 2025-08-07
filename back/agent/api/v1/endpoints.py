@@ -9,6 +9,7 @@ from .schemas import MessageRequest, MessageResponse
 
 router = APIRouter()
 
+
 @router.post("/process")
 async def process_message(request: MessageRequest) -> MessageResponse:
     """Process user input and return the response."""
