@@ -4,6 +4,7 @@ ChromaDB service for vector database operations
 import chromadb
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
 
 from core.logging import get_logger
 from config.settings import settings
@@ -35,9 +36,11 @@ class ChromaDBService:
             heartbeat = self.client.heartbeat()
             logger.info(f"ChromaDB heartbeat: {heartbeat}")
             
-            # Create or get collection
+            # Create or get collection with default embedding function
+            embedding_function = DefaultEmbeddingFunction()
             self.collection = self.client.get_or_create_collection(
                 name=self.collection_name,
+                embedding_function=embedding_function,
                 metadata={
                     "description": "Chat messages with semantic embeddings",
                     "created_at": datetime.now().isoformat()
