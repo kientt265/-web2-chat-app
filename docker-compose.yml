@@ -3,7 +3,7 @@ services:
     build:
       context: ./back/chat-service
       dockerfile: Dockerfile
-    env_file: ./back/chat-service/.env
+    env_file: .env
     ports:
       - "3002:3002"
     environment:
@@ -15,6 +15,22 @@ services:
       - kafka
     volumes:
       - ./back/chat-service:/app
+    networks:
+      - app-network
+
+  agent:
+    build:
+      context: ./back/agent
+      dockerfile: Dockerfile
+    ports:
+      - "3004:3004"
+    environment:
+      - AGENT_PORT=3004
+      - AGENT_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@auth-db:5432/auth_db?schema=public
+    depends_on:
+      - auth-db
+    volumes:
+      - ./back/agent:/app
     networks:
       - app-network
 
@@ -91,8 +107,6 @@ services:
       - ./back/gateway/conf.d:/etc/nginx/conf.d
     networks:
       - app-network
-
-
 
 volumes:
   auth-db-data:

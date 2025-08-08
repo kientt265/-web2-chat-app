@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose port (change if your app uses a different port)
-EXPOSE 3002
+EXPOSE 3004
 
 # Start the application (replace app.py with your entry point)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3002"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3004", "--reload"]  
