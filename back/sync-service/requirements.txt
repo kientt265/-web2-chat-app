@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+confluent-kafka
+chromadb
+sentence-transformers
+python-dotenv
+requests
+pydantic
