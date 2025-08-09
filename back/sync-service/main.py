@@ -2,9 +2,14 @@
 Chat Sync Service - Main Application
 Structured FastAPI application for CDC processing and vector search
 """
+import sys
+import os
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
+
+# Add current directory to Python path for module imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

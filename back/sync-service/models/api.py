@@ -29,7 +29,6 @@ class SearchResult(BaseModel):
     conversation_id: str
     sender_id: str
     content: str
-    sent_at: datetime
     similarity_score: float
 
 

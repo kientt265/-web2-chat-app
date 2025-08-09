@@ -20,12 +20,12 @@ class Settings(BaseSettings):
     port: int = Field(default=3005, env="SYNC_PORT")
     
     # Kafka
-    kafka_bootstrap_servers: str = Field(default="kafka:9092", env="KAFKA_BOOTSTRAP_SERVERS")
+    kafka_bootstrap_servers: str = Field(default="localhost:9092", env="KAFKA_BOOTSTRAP_SERVERS")
     kafka_group_id: str = Field(default="chat-sync-service", env="KAFKA_GROUP_ID")
     kafka_auto_offset_reset: str = Field(default="latest", env="KAFKA_AUTO_OFFSET_RESET")
     
     # ChromaDB
-    chromadb_host: str = Field(default="chromadb", env="CHROMADB_HOST")
+    chromadb_host: str = Field(default="localhost", env="CHROMADB_HOST")
     chromadb_port: int = Field(default=8000, env="CHROMADB_PORT")
     chromadb_collection_name: str = Field(default="chat_messages", env="CHROMADB_COLLECTION_NAME")
     
@@ -45,7 +45,8 @@ class Settings(BaseSettings):
     
     model_config = {
         "env_file": ".env",
-        "case_sensitive": False
+        "case_sensitive": False,
+        "extra": "ignore"  # Ignore extra fields from .env file
     }
 
 

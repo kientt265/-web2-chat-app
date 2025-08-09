@@ -12,15 +12,30 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "FastAPI (Uvicorn) Debug",
+            "name": "FastAPI (Uvicorn) Agent Debug",
             "request": "launch",
             "type": "debugpy",
             "module": "uvicorn",
-            "cwd": "${workspaceFolder}/back/src",
+            "cwd": "${workspaceFolder}/back",
             "args": [
                 "agent.main:app",
                 "--host", "0.0.0.0",
                 "--port", "3002",
+                "--reload"
+            ],
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal"
+        },
+         {
+            "name": "FastAPI (Uvicorn) Sync Service Debug",
+            "request": "launch",
+            "type": "debugpy",
+            "module": "uvicorn",
+            "cwd": "${workspaceFolder}/back",
+            "args": [
+                "sync-service.main:app",
+                "--host", "0.0.0.0",
+                "--port", "3005",
                 "--reload"
             ],
             "envFile": "${workspaceFolder}/.env",

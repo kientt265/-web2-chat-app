@@ -112,18 +112,27 @@ class ChromaDBService:
             raise RuntimeError("ChromaDB not initialized")
         
         try:
-            # Build where clause
-            where_clause = {}
-            if conversation_id:
-                where_clause["conversation_id"] = conversation_id
-            if sender_id:
-                where_clause["sender_id"] = sender_id
+            # Build where clause with proper ChromaDB operators
+            where_clause = None
+            
+            if conversation_id and sender_id:
+                # Multiple conditions need to use $and operator
+                where_clause = {
+                    "$and": [
+                        {"conversation_id": {"$eq": conversation_id}},
+                        {"sender_id": {"$eq": sender_id}}
+                    ]
+                }
+            elif conversation_id:
+                where_clause = {"conversation_id": {"$eq": conversation_id}}
+            elif sender_id:
+                where_clause = {"sender_id": {"$eq": sender_id}}
             
             # Perform search
             results = self.collection.query(
                 query_embeddings=[query_embedding],
                 n_results=limit,
-                where=where_clause if where_clause else None,
+                where=where_clause,
                 include=["metadatas", "documents", "distances"]
             )
             
@@ -143,7 +152,6 @@ class ChromaDBService:
                         conversation_id=metadata["conversation_id"],
                         sender_id=metadata["sender_id"],
                         content=content,
-                        sent_at=datetime.fromisoformat(metadata["sent_at"]),
                         similarity_score=similarity_score
                     )
                     search_results.append(search_result)
