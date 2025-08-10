@@ -27,6 +27,8 @@ export const createConversation = async (req: Request, res: Response) => {
   const { type, name, user_ids } = req.body; 
 
   try {
+    const host_user_id = req.user?.user_id;
+    user_ids.push(host_user_id); 
     const conversation = await prisma.conversations.create({
       data: {
         type,
@@ -41,6 +43,7 @@ export const createConversation = async (req: Request, res: Response) => {
       include: { members: true },
     });
     res.status(201).json(conversation);
+    console.log('Conversation created thành công:', conversation);
   } catch (error) {
     console.error('Error creating conversation:', error);
     res.status(500).json({ error: 'Failed to create conversation' });
