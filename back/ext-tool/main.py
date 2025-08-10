@@ -20,6 +20,7 @@ from config.settings import settings
 
 # Import tool routers
 from tools.web_scraper.api import router as scraper_router
+from tools.calculator.api import router as calc_router
 
 # Setup logging
 setup_logging()
@@ -75,6 +76,7 @@ app.add_middleware(
 
 # Include tool routers
 app.include_router(scraper_router, prefix="/tools/scraper", tags=["Web Scraper"])
+app.include_router(calc_router, prefix="/tools/calculator", tags=["Calculator"])
 
 
 @app.get("/")
@@ -114,6 +116,12 @@ async def list_tools():
                 "path": "/tools/scraper",
                 "description": "Web scraping and content extraction"
             },
+            {
+                "name": "calculator",
+                "path": "/tools/calculator",
+                "description": "Mathematical calculations and utilities"
+            }
+        ]
     }
 
 
