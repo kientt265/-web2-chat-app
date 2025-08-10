@@ -2,23 +2,23 @@
 External Tools Service - Main Application
 HTTP API service for AI agent tools and utilities
 """
+
 import sys
 import os
-import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
 
 # Add current directory to Python path for module imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 
 from core.logging import setup_logging, get_logger
 from config.settings import settings
+from fastapi import FastAPI
 
 # Import tool routers
+from tools.search_messages.api import router as search_messages_router
 from tools.web_scraper.api import router as scraper_router
 from tools.calculator.api import router as calc_router
 
@@ -35,21 +35,21 @@ async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     logger.info(f"🚀 Starting {settings.app_name} v{settings.app_version}")
-    
+
     # Initialize tool services
     success = True
-    
+
     logger.info("Initializing tool services...")
     # Add any global initialization here
-    
+
     if success:
         logger.info("✅ All tool services initialized successfully")
     else:
         logger.error("❌ Failed to initialize tool services")
         raise RuntimeError("Tool service initialization failed")
-    
+
     yield
-    
+
     # Shutdown
     logger.info("🛑 Shutting down tool services...")
     logger.info("👋 Shutdown complete")
@@ -62,7 +62,7 @@ app = FastAPI(
     description="HTTP API service for AI agent tools and utilities",
     lifespan=lifespan,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
 # Add CORS middleware
@@ -75,6 +75,9 @@ app.add_middleware(
 )
 
 # Include tool routers
+app.include_router(
+    search_messages_router, prefix="/tools/search-messages", tags=["Search Messages"]
+)
 app.include_router(scraper_router, prefix="/tools/scraper", tags=["Web Scraper"])
 app.include_router(calc_router, prefix="/tools/calculator", tags=["Calculator"])
 
@@ -89,10 +92,10 @@ async def root():
         "uptime_seconds": (datetime.now() - start_time).total_seconds(),
         "available_tools": [
             "/tools/search-messages",
-            "/tools/scraper", 
+            "/tools/scraper",
             "/tools/files",
-            "/tools/calculator"
-        ]
+            "/tools/calculator",
+        ],
     }
 
 
@@ -102,7 +105,7 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "service": settings.app_name
+        "service": settings.app_name,
     }
 
 
@@ -112,27 +115,32 @@ async def list_tools():
     return {
         "tools": [
             {
+                "name": "search-messages",
+                "path": "/tools/search-messages",
+                "description": "Semantic search tools for chat messages",
+            },
+            {
                 "name": "scraper",
                 "path": "/tools/scraper",
-                "description": "Web scraping and content extraction"
+                "description": "Web scraping and content extraction",
             },
             {
                 "name": "calculator",
                 "path": "/tools/calculator",
-                "description": "Mathematical calculations and utilities"
-            }
+                "description": "Mathematical calculations and utilities",
+            },
         ]
     }
 
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     logger.info(f"🔧 Starting {settings.app_name} on {settings.host}:{settings.port}")
     uvicorn.run(
         "main:app",
         host=settings.host,
         port=settings.port,
         log_level=settings.log_level.lower(),
-        reload=settings.debug
+        reload=settings.debug,
     )
