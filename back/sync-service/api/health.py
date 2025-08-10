@@ -1,6 +1,7 @@
 """
 Health check endpoints
 """
+
 from datetime import datetime
 from fastapi import APIRouter
 
@@ -17,5 +18,5 @@ async def health_check():
         status="healthy",
         timestamp=datetime.now(),
         service=settings.app_name,
-        version=settings.app_version
+        version=settings.app_version,
     )

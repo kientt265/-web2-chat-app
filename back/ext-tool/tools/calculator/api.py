@@ -2,11 +2,17 @@
 Calculator Tool API
 HTTP endpoints for mathematical operations and computational utilities
 """
+
 from fastapi import APIRouter, HTTPException
-from typing import Optional, List, Dict, Any, Union
 
 from core.logging import get_logger
-from .service import CalculatorService, CalculationRequest, CalculationResult, StatisticsRequest, StatisticsResult
+from .service import (
+    CalculatorService,
+    CalculationRequest,
+    CalculationResult,
+    StatisticsRequest,
+    StatisticsResult,
+)
 
 router = APIRouter()
 logger = get_logger(__name__)
@@ -28,15 +34,12 @@ async def calculate(request: CalculationRequest):
             result=str(e),
             success=False,
             error=str(e),
-            precision=request.precision
+            precision=request.precision,
         )
 
 
 @router.get("/calculate")
-async def calculate_simple(
-    expression: str,
-    precision: int = 10
-):
+async def calculate_simple(expression: str, precision: int = 10):
     """Simple calculation endpoint"""
     try:
         result = await calc_service.calculate_simple(expression, precision)
@@ -48,7 +51,7 @@ async def calculate_simple(
             result=str(e),
             success=False,
             error=str(e),
-            precision=precision
+            precision=precision,
         )
 
 
@@ -65,7 +68,7 @@ async def calculate_statistics(request: StatisticsRequest):
             results={},
             count=len(request.data) if request.data else 0,
             success=False,
-            error=str(e)
+            error=str(e),
         )
 
 
@@ -77,10 +80,7 @@ async def list_functions():
 
 @router.get("/convert")
 async def unit_conversion(
-    value: float,
-    from_unit: str,
-    to_unit: str,
-    unit_type: str = "length"
+    value: float, from_unit: str, to_unit: str, unit_type: str = "length"
 ):
     """Convert between units"""
     try:
@@ -97,6 +97,11 @@ async def calculator_health():
     functions = calc_service.list_functions()
     return {
         "status": "healthy",
-        "capabilities": ["basic_math", "advanced_math", "statistics", "unit_conversion"],
-        "functions_count": len(functions.get("functions", []))
+        "capabilities": [
+            "basic_math",
+            "advanced_math",
+            "statistics",
+            "unit_conversion",
+        ],
+        "functions_count": len(functions.get("functions", [])),
     }
