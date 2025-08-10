@@ -11,11 +11,11 @@ from datetime import datetime
 # Add current directory to Python path for module imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core.logging import setup_logging, get_logger
 from config.settings import settings
-from fastapi import FastAPI
 
 # Import tool routers
 from tools.search_messages.api import router as search_messages_router
@@ -93,7 +93,6 @@ async def root():
         "available_tools": [
             "/tools/search-messages",
             "/tools/scraper",
-            "/tools/files",
             "/tools/calculator",
         ],
     }
