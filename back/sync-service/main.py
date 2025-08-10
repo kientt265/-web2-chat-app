@@ -2,6 +2,7 @@
 Chat Sync Service - Main Application
 Structured FastAPI application for CDC processing and vector search
 """
+
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -30,19 +31,19 @@ async def lifespan(app: FastAPI):
     """Application lifespan events"""
     # Startup
     logger.info(f"🚀 Starting {settings.app_name} v{settings.app_version}")
-    
+
     # Initialize services
     success = True
-    
+
     logger.info("Initializing embedding service...")
     success &= await embedding_service.initialize()
-    
+
     logger.info("Initializing ChromaDB service...")
     success &= await chromadb_service.initialize()
-    
+
     logger.info("Initializing Kafka service...")
     success &= await kafka_service.initialize(CDCProcessor.process_cdc_event)
-    
+
     if success:
         # Start CDC consumer in background
         asyncio.create_task(kafka_service.start_consuming())
@@ -50,9 +51,9 @@ async def lifespan(app: FastAPI):
     else:
         logger.error("❌ Failed to initialize services")
         raise RuntimeError("Service initialization failed")
-    
+
     yield
-    
+
     # Shutdown
     logger.info("🛑 Shutting down services...")
     await kafka_service.stop_consuming()
@@ -64,7 +65,7 @@ app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
     description="CDC consumer service for syncing chat data to ChromaDB",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Add CORS middleware
@@ -89,18 +90,18 @@ async def root():
         "service": settings.app_name,
         "version": settings.app_version,
         "status": "running",
-        "uptime_seconds": (datetime.now() - start_time).total_seconds()
+        "uptime_seconds": (datetime.now() - start_time).total_seconds(),
     }
 
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     logger.info(f"🔧 Starting {settings.app_name} on {settings.host}:{settings.port}")
     uvicorn.run(
         "main:app",
         host=settings.host,
         port=settings.port,
         log_level=settings.log_level.lower(),
-        reload=settings.debug
+        reload=settings.debug,
     )

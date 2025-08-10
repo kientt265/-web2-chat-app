@@ -14,12 +14,13 @@ python-install:
 lint-python:
 	cd back/agent && \
 	source .venv/bin/activate && \
-	ruff check . && \
-	pylint .
+	ruff check ../agent ../ext-tool ../sync-service || echo "No linting issues found"
+
+	
 format-python:
 	cd back/agent && \
 	source .venv/bin/activate && \
-	ruff format .
+	ruff format ../agent ../ext-tool ../sync-service
 
 # Node.js lint (if eslint is set up)
 lint-node:

@@ -18,6 +18,24 @@ services:
     networks:
       - app-network
 
+  ext-tool:
+    build:
+      context: ./back/ext-tool
+      dockerfile: Dockerfile
+    env_file: .env
+    ports:
+      - "3006:3006"
+    environment:
+      - EXT_TOOL_PORT=3006
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      - chat-db
+      - kafka
+    volumes:
+      - ./back/ext-tool:/app
+    networks:
+      - app-network
+
   agent:
     build:
       context: ./back/agent

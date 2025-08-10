@@ -1,10 +1,9 @@
 """
-Logging configuration
+Logging configuration for ext-tool service
 """
 
 import logging
 import sys
-from config.settings import settings
 
 
 def setup_logging() -> None:
@@ -18,7 +17,7 @@ def setup_logging() -> None:
 
     # Configure root logger
     root_logger = logging.getLogger()
-    root_logger.setLevel(getattr(logging, settings.log_level.upper()))
+    root_logger.setLevel(logging.INFO)
 
     # Remove existing handlers
     root_logger.handlers.clear()
@@ -29,10 +28,8 @@ def setup_logging() -> None:
     root_logger.addHandler(console_handler)
 
     # Configure specific loggers
-    logging.getLogger("chromadb").setLevel(logging.WARNING)
-    logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
-    logging.getLogger("transformers").setLevel(logging.WARNING)
-    logging.getLogger("torch").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn").setLevel(logging.INFO)
+    logging.getLogger("fastapi").setLevel(logging.INFO)
 
 
 def get_logger(name: str) -> logging.Logger:

@@ -1,13 +1,15 @@
 """
 API response models
 """
-from typing import List, Dict, Any, Optional
+
+from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
 
 
 class HealthResponse(BaseModel):
     """Health check response"""
+
     status: str
     timestamp: datetime
     service: str
@@ -16,6 +18,7 @@ class HealthResponse(BaseModel):
 
 class StatsResponse(BaseModel):
     """Service statistics response"""
+
     chromadb_documents: int
     embedding_model: str
     kafka_topics: List[str]
@@ -25,6 +28,7 @@ class StatsResponse(BaseModel):
 
 class SearchResult(BaseModel):
     """Individual search result"""
+
     message_id: str
     conversation_id: str
     sender_id: str
@@ -35,6 +39,7 @@ class SearchResult(BaseModel):
 
 class SearchResponse(BaseModel):
     """Search response"""
+
     query: str
     results: List[SearchResult]
     total_results: int
