@@ -15,7 +15,7 @@ router = APIRouter(prefix="/search", tags=["search"])
 logger = get_logger(__name__)
 
 
-@router.post("", response_model=SearchResponse)
+@router.post("/messages", response_model=SearchResponse)
 async def search_messages(query: SearchQuery) -> SearchResponse:
     """Search messages using semantic similarity"""
     start_time = time.time()
