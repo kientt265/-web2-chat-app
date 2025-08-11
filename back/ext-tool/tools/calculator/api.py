@@ -105,3 +105,26 @@ async def calculator_health():
         ],
         "functions_count": len(functions.get("functions", [])),
     }
+
+
+@router.post("/")
+async def handle_agent_request(request: dict):
+    """Handle generic agent requests to calculator tool"""
+    try:
+        # Extract input from the request
+        input_text = request.get("input", "")
+        if not input_text:
+            return {"error": "No input provided", "success": False}
+
+        # Use the simple calculation endpoint
+        result = await calc_service.calculate_simple(input_text, 10)
+        return result
+
+    except Exception as e:
+        logger.error(f"❌ Agent request error: {e}")
+        return {
+            "error": str(e),
+            "success": False,
+            "expression": request.get("input", ""),
+            "result": None,
+        }

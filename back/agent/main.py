@@ -25,7 +25,13 @@ def root():
     return {"message": "Welcome to the Agent API Service. See /docs for Swagger UI."}
 
 
+@app.get("/health", tags=["info"])
+def health():
+    """Health check endpoint."""
+    return {"status": "healthy", "service": "Agent API Service"}
+
+
 app.include_router(router_v1, prefix="/api/v1", tags=["agent"])
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=3002)
+    uvicorn.run("main:app", host="0.0.0.0", port=3004)

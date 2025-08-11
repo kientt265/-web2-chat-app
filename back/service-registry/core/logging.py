@@ -1,11 +1,12 @@
-"""Logging utilities for ext-tool service."""
+"""Logging configuration for the service registry."""
 
 import logging
 import sys
+from pythonjsonlogger import jsonlogger
 
 
 def setup_logging(level: str = "INFO") -> None:
-    """Setup logging for the application."""
+    """Setup structured logging for the application."""
 
     # Configure root logger
     root_logger = logging.getLogger()
@@ -15,15 +16,12 @@ def setup_logging(level: str = "INFO") -> None:
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 
-    # Create console handler
+    # Create console handler with JSON formatter
     console_handler = logging.StreamHandler(sys.stdout)
-
-    # Create formatter
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+    json_formatter = jsonlogger.JsonFormatter(
+        "%(asctime)s %(name)s %(levelname)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
     )
-    console_handler.setFormatter(formatter)
+    console_handler.setFormatter(json_formatter)
     root_logger.addHandler(console_handler)
 
 

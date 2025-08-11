@@ -8,3 +8,5 @@ pydantic
 langchain_tavily
 langchain-google-vertexai
 ruff
+httpx
+aiofiles
