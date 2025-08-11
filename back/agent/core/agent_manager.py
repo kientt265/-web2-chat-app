@@ -10,7 +10,6 @@ from typing import Dict
 
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
-from langchain.tools import Tool
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 
@@ -97,10 +96,6 @@ class AgentManager:
         agent = self._get_or_create_agent(session_id)
         response = agent.invoke({"messages": [{"role": "user", "content": user_input}]})
 
-        # Debug: Print the full response structure
-        print(f"DEBUG: Full response structure: {response}")
-        print(f"DEBUG: Response type: {type(response)}")
-
         # Extract the final message content from LangGraph response
         if isinstance(response, dict):
             # LangGraph typically returns {"messages": [...]}
@@ -109,31 +104,21 @@ class AgentManager:
                 and isinstance(response["messages"], list)
                 and response["messages"]
             ):
-                print(f"DEBUG: Found {len(response['messages'])} messages")
                 last_message = response["messages"][-1]
-                print(f"DEBUG: Last message: {last_message}")
-                print(f"DEBUG: Last message type: {type(last_message)}")
 
                 if hasattr(last_message, "content"):
-                    print(f"DEBUG: Using last_message.content: {last_message.content}")
                     return last_message.content
                 elif isinstance(last_message, dict) and "content" in last_message:
-                    print(
-                        f"DEBUG: Using last_message['content']: {last_message['content']}"
-                    )
                     return last_message["content"]
 
             # Try other common keys
             for key in ["output", "result", "response"]:
                 if key in response and isinstance(response[key], str):
-                    print(f"DEBUG: Using response['{key}']: {response[key]}")
                     return response[key]
 
             # Fallback: string representation
-            print(f"DEBUG: Using fallback str(response)")
             return str(response)
 
-        print(f"DEBUG: Response is not dict, using str(response)")
         return str(response)
 
     def get_agent_count(self) -> int:
