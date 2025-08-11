@@ -1,6 +1,5 @@
 """Dependency injection for API endpoints."""
 
-from fastapi import Depends
 from core.service_registry import ServiceRegistry
 from core.zookeeper_client import ZookeeperClient
 from config import settings
@@ -15,8 +14,7 @@ async def get_zookeeper_client() -> ZookeeperClient:
     global _zk_client
     if _zk_client is None:
         _zk_client = ZookeeperClient(
-            hosts=settings.zookeeper_hosts,
-            timeout=settings.zookeeper_timeout
+            hosts=settings.zookeeper_hosts, timeout=settings.zookeeper_timeout
         )
     return _zk_client
 

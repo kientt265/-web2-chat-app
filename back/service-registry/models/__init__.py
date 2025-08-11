@@ -10,12 +10,12 @@ from .service import (
     ServiceUpdate,
     ServiceDiscoveryQuery,
     ServiceDiscoveryResponse,
-    RegistryStats
+    RegistryStats,
 )
 
 __all__ = [
     "ServiceStatus",
-    "ServiceType", 
+    "ServiceType",
     "ServiceMetadata",
     "HealthCheck",
     "ServiceInfo",
@@ -23,5 +23,5 @@ __all__ = [
     "ServiceUpdate",
     "ServiceDiscoveryQuery",
     "ServiceDiscoveryResponse",
-    "RegistryStats"
+    "RegistryStats",
 ]

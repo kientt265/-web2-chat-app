@@ -8,6 +8,7 @@ from enum import Enum
 
 class ServiceStatus(str, Enum):
     """Service status enumeration."""
+
     HEALTHY = "healthy"
     UNHEALTHY = "unhealthy"
     STARTING = "starting"
@@ -17,6 +18,7 @@ class ServiceStatus(str, Enum):
 
 class ServiceType(str, Enum):
     """Service type enumeration."""
+
     AGENT = "agent"
     TOOL = "tool"
     API = "api"
@@ -27,6 +29,7 @@ class ServiceType(str, Enum):
 
 class ServiceMetadata(BaseModel):
     """Service metadata model."""
+
     description: Optional[str] = None
     version: Optional[str] = None
     tags: List[str] = Field(default_factory=list)
@@ -37,6 +40,7 @@ class ServiceMetadata(BaseModel):
 
 class HealthCheck(BaseModel):
     """Health check configuration."""
+
     enabled: bool = True
     endpoint: str = "/health"
     interval_seconds: int = 30
@@ -46,6 +50,7 @@ class HealthCheck(BaseModel):
 
 class ServiceInfo(BaseModel):
     """Service information model."""
+
     service_id: str
     name: str
     service_type: ServiceType
@@ -56,12 +61,12 @@ class ServiceInfo(BaseModel):
     health_check: HealthCheck = Field(default_factory=HealthCheck)
     registered_at: datetime = Field(default_factory=datetime.utcnow)
     last_heartbeat: datetime = Field(default_factory=datetime.utcnow)
-    
+
     @property
     def base_url(self) -> str:
         """Get the base URL for the service."""
         return f"http://{self.host}:{self.port}"
-    
+
     @property
     def health_url(self) -> str:
         """Get the health check URL for the service."""
@@ -70,6 +75,7 @@ class ServiceInfo(BaseModel):
 
 class ServiceRegistration(BaseModel):
     """Service registration request model."""
+
     name: str
     service_type: ServiceType
     host: str
@@ -80,6 +86,7 @@ class ServiceRegistration(BaseModel):
 
 class ServiceUpdate(BaseModel):
     """Service update request model."""
+
     status: Optional[ServiceStatus] = None
     metadata: Optional[ServiceMetadata] = None
     health_check: Optional[HealthCheck] = None
@@ -87,6 +94,7 @@ class ServiceUpdate(BaseModel):
 
 class ServiceDiscoveryQuery(BaseModel):
     """Service discovery query model."""
+
     service_type: Optional[ServiceType] = None
     name: Optional[str] = None
     tags: Optional[List[str]] = None
@@ -96,6 +104,7 @@ class ServiceDiscoveryQuery(BaseModel):
 
 class ServiceDiscoveryResponse(BaseModel):
     """Service discovery response model."""
+
     services: List[ServiceInfo]
     total_count: int
     query: ServiceDiscoveryQuery
@@ -103,6 +112,7 @@ class ServiceDiscoveryResponse(BaseModel):
 
 class RegistryStats(BaseModel):
     """Service registry statistics."""
+
     total_services: int
     services_by_type: Dict[ServiceType, int]
     services_by_status: Dict[ServiceStatus, int]
