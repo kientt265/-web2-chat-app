@@ -28,11 +28,31 @@ services:
     environment:
       - EXT_TOOL_PORT=3006
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SERVICE_REGISTRY_URL=http://service-registry:3003
     depends_on:
       - chat-db
       - kafka
+      - service-registry
     volumes:
       - ./back/ext-tool:/app
+    networks:
+      - app-network
+
+  service-registry:
+    build:
+      context: ./back/service-registry
+      dockerfile: Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      - SERVICE_REGISTRY_PORT=3003
+      - ZOOKEEPER_HOSTS=zookeeper:2181
+      - ZOOKEEPER_TIMEOUT=10
+      - LOG_LEVEL=INFO
+    depends_on:
+      - zookeeper
+    volumes:
+      - ./back/service-registry:/app
     networks:
       - app-network
 
@@ -43,10 +63,13 @@ services:
     ports:
       - "3004:3004"
     environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - AGENT_PORT=3004
       - AGENT_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@auth-db:5432/auth_db?schema=public
+      - SERVICE_REGISTRY_URL=http://service-registry:3003
     depends_on:
       - auth-db
+      - service-registry
     volumes:
       - ./back/agent:/app
     networks:

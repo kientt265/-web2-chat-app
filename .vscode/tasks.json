@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build and Start Service Registry System",
+			"type": "shell",
+			"command": "docker-compose up --build service-registry ext-tool agent",
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}
