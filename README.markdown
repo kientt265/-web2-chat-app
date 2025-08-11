@@ -11,25 +11,27 @@ The application is built on a microservice architecture with the following key c
 - **API Gateway (Nginx)**: Centralized routing and load balancing for all microservices
 - **Chat Service**: Node.js/Express microservice handling real-time chat functionality
 - **Auth Service**: Authentication and user management service
-- **Agent Service**: AI-powered agent for conversation assistance and automation
+- **Agent Service**: AI-powered agent with LangChain for conversation assistance and tool calling
 - **Sync Service**: Real-time data synchronization with semantic search capabilities
 - **External Tool Service**: Extensible service for integrating external tools and APIs
+- **Service Registry**: Zookeeper-based service discovery and coordination system
 
 ### Infrastructure Services
 - **PostgreSQL Databases**: Separate databases for chat and authentication data
 - **Kafka**: Message broker for real-time event streaming
-- **Zookeeper**: Kafka coordination and metadata management
+- **Zookeeper**: Kafka coordination, metadata management, and service registry backend
 - **ChromaDB**: Vector database for semantic search and AI features
 - **Debezium**: Change data capture (CDC) for real-time data synchronization
 
 ### Key Features
 - 🚀 **Real-time messaging** with WebSocket support
 - 🔍 **Semantic search** across conversation history
-- 🤖 **AI agents** for intelligent conversation assistance
-- 🔧 **External tool integration** for extended functionality
+- 🤖 **AI agents** with LangChain for intelligent conversation assistance and tool calling
+- 🔧 **Dynamic tool integration** with service discovery and registration
 - 📊 **Change data capture** for real-time data synchronization
 - 🌐 **API Gateway** for centralized routing
 - 🔐 **Authentication system** with secure user management
+- 🔄 **Service registry** for microservice coordination and discovery
 - 🐳 **Containerized deployment** with Docker Compose
 
 ## Prerequisites
@@ -83,16 +85,23 @@ web2-chat-app/
 │   ├── agent/                  # AI agent service
 │   │   ├── main.py             # FastAPI application
 │   │   ├── core/               # Agent management logic
-│   │   ├── prompts/            # AI conversation prompts
+│   │   ├── services/           # Service discovery and tool calling
+│   │   ├── api/                # REST API endpoints
 │   │   └── Dockerfile          # Container configuration
 │   ├── sync-service/           # Data synchronization service
 │   │   ├── main.py             # FastAPI application
 │   │   ├── services/           # Sync and embedding services
 │   │   ├── processors/         # CDC event processors
 │   │   └── Dockerfile          # Container configuration
-│   └── ext-tool/               # External tool integration service
-│       ├── main.py             # Tool service entry point
-│       ├── tools/              # Individual tool implementations
+│   ├── ext-tool/               # External tool integration service
+│   │   ├── main.py             # Tool service entry point
+│   │   ├── tools/              # Individual tool implementations
+│   │   ├── services/           # Tool registration services
+│   │   └── Dockerfile          # Container configuration
+│   └── service-registry/       # Service discovery and registry
+│       ├── main.py             # FastAPI service registry
+│       ├── core/               # Zookeeper client and registry logic
+│       ├── api/                # Registry API endpoints
 │       └── Dockerfile          # Container configuration
 ├── debezium/                   # Change Data Capture configuration
 │   ├── postgres-connector.json # Debezium PostgreSQL connector config
@@ -149,25 +158,32 @@ docker-compose ps
 
 You should see the following services:
 - `api-gateway` (Port 80)
-- `chat-service` (Port 3002)
 - `auth-service` (Port 3001) 
+- `chat-service` (Port 3002)
+- `service-registry` (Port 3003)
 - `agent` (Port 3004)
 - `sync-service` (Port 3005)
 - `ext-tool` (Port 3006)
+- `service-registry` (Port 3003)
 - `chat-db` (Port 5434)
 - `auth-db` (Port 5433)
 - `kafka` (Port 9092)
 - `zookeeper` (Port 2181)
 - `chromadb` (Port 8000)
 - `connect` (Port 8083)
+- `connect` (Port 8083)
 
 ### 5. Access the Application
 - **Frontend**: http://localhost:5173 (if running separately)
 - **API Gateway**: http://localhost/api/
-- **Chat Service**: http://localhost/api/chat/
 - **Auth Service**: http://localhost/api/auth/
+- **Chat Service**: http://localhost/api/chat/
+- **Service Registry**: http://localhost:3003
+- **Agent Service**: http://localhost:3004
 - **Sync Service**: http://localhost:3005
+- **External Tool Service**: http://localhost:3006
 - **ChromaDB**: http://localhost:8000
+- **Debezium Connect**: http://localhost:8083
 
 ## Development
 
@@ -216,6 +232,13 @@ python main.py  # Runs on port 3005
 cd back/ext-tool
 pip install -r requirements.txt
 uvicorn main:app --reload --port 3006
+```
+
+**Service Registry:**
+```bash
+cd back/service-registry
+pip install -r requirements.txt
+uvicorn main:app --reload --port 3003
 ```
 
 ### Service Management
@@ -367,26 +390,35 @@ POST /api/chat/conversations/:id/messages  # Send message
 GET  /api/chat/messages/:id            # Get message details
 ```
 
-### Sync Service (Port 3005)
+### Service Registry (Port 3003)
 ```bash
-GET  /health              # Service health check
-GET  /stats               # Service statistics
-POST /search              # Semantic message search
+POST /register             # Register a service
+GET  /discover/{service_type}  # Discover services by type
+GET  /health               # Registry health check
+GET  /services             # List all registered services
 ```
 
 ### Agent Service (Port 3004)
 ```bash
-POST /api/agent/chat      # Chat with AI agent
-POST /api/agent/tools     # Execute tools
-GET  /api/agent/health    # Agent health status
+POST /agent/process        # Process AI agent requests with tool calling
+GET  /agent/health         # Agent health status
+GET  /agent/tools          # List available tools (dynamically discovered)
+```
+
+### Sync Service (Port 3005)
+```bash
+GET  /health               # Service health check
+GET  /stats                # Service statistics
+POST /search               # Semantic message search
 ```
 
 ### External Tool Service (Port 3006)
 ```bash
-GET  /health                    # Service health
-POST /tools/calculator          # Mathematical operations
-POST /tools/web-scraper         # Web content extraction
-POST /tools/message-search      # Message search functionality
+GET  /tools                        # List available tools
+POST /tools/calculator/calculate   # Mathematical operations
+GET  /tools/calculator/health      # Calculator tool health check
+POST /tools/web-scraper           # Web content extraction
+POST /tools/message-search        # Message search functionality
 ```
 
 ## Code Quality & Development Tools
