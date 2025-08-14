@@ -280,7 +280,7 @@ class RouterManager:
         """
         try:
             async with httpx.AsyncClient(timeout=config.REQUEST_TIMEOUT) as client:
-                payload = {"message": user_input, "session_id": session_id}
+                payload = {"user_input": user_input, "session_id": session_id}
 
                 response = await client.post(
                     self.agent_endpoints[AgentType.TOOL_AGENT.value], json=payload
