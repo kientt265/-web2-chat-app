@@ -217,7 +217,7 @@ class RouterManager:
                         line for line in content.split("\n") if "CONFIDENCE:" in line
                     ][0]
                     confidence = float(conf_line.split("CONFIDENCE:")[1].strip())
-                except:
+                except (ValueError, IndexError):
                     pass
 
             if "REASONING:" in content:
@@ -226,7 +226,7 @@ class RouterManager:
                         line for line in content.split("\n") if "REASONING:" in line
                     ][0]
                     reasoning = reason_line.split("REASONING:")[1].strip()
-                except:
+                except (ValueError, IndexError):
                     pass
 
             return {

@@ -5,7 +5,7 @@ This module defines the request and response models used by the Router Agent API
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from typing import Optional, List
 
 
 class RouterQuery(BaseModel):
