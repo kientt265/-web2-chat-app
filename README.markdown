@@ -11,6 +11,7 @@ The application is built on a microservice architecture with the following key c
 - **API Gateway (Nginx)**: Centralized routing and load balancing for all microservices
 - **Chat Service**: Node.js/Express microservice handling real-time chat functionality
 - **Auth Service**: Authentication and user management service
+- **Router Agent**: Intelligent routing service that analyzes queries and routes them to specialized agents
 - **Agent Service**: AI-powered agent with LangChain for conversation assistance and tool calling
 - **Sync Service**: Real-time data synchronization with semantic search capabilities
 - **External Tool Service**: Extensible service for integrating external tools and APIs
@@ -27,10 +28,11 @@ The application is built on a microservice architecture with the following key c
 - 🚀 **Real-time messaging** with WebSocket support
 - 🔍 **Semantic search** across conversation history
 - 🤖 **AI agents** with LangChain for intelligent conversation assistance and tool calling
+- 🧠 **Intelligent routing** with specialized agents for tools, history, and general queries
 - 🔧 **Dynamic tool integration** with service discovery and registration
 - 📊 **Change data capture** for real-time data synchronization
 - 🌐 **API Gateway** for centralized routing
-- 🔐 **Authentication system** with secure user management
+- 🔐 **Authentication system** with secure user managements
 - 🔄 **Service registry** for microservice coordination and discovery
 - 🐳 **Containerized deployment** with Docker Compose
 
@@ -87,6 +89,13 @@ web2-chat-app/
 │   │   ├── core/               # Agent management logic
 │   │   ├── services/           # Service discovery and tool calling
 │   │   ├── api/                # REST API endpoints
+│   │   └── Dockerfile          # Container configuration
+│   ├── router-agent/           # Intelligent query routing service
+│   │   ├── main.py             # FastAPI application
+│   │   ├── core/               # Router management and analysis logic
+│   │   ├── config/             # Configuration settings
+│   │   ├── api/                # REST API endpoints
+│   │   ├── tests/              # Test queries and examples
 │   │   └── Dockerfile          # Container configuration
 │   ├── sync-service/           # Data synchronization service
 │   │   ├── main.py             # FastAPI application
@@ -164,7 +173,7 @@ You should see the following services:
 - `agent` (Port 3004)
 - `sync-service` (Port 3005)
 - `ext-tool` (Port 3006)
-- `service-registry` (Port 3003)
+- `router-agent` (Port 3007)
 - `chat-db` (Port 5434)
 - `auth-db` (Port 5433)
 - `kafka` (Port 9092)
@@ -182,6 +191,7 @@ You should see the following services:
 - **Agent Service**: http://localhost:3004
 - **Sync Service**: http://localhost:3005
 - **External Tool Service**: http://localhost:3006
+- **Router Agent Service**: http://localhost:3007
 - **ChromaDB**: http://localhost:8000
 - **Debezium Connect**: http://localhost:8083
 
@@ -232,6 +242,13 @@ python main.py  # Runs on port 3005
 cd back/ext-tool
 pip install -r requirements.txt
 uvicorn main:app --reload --port 3006
+```
+
+**Router Agent Service:**
+```bash
+cd back/router-agent
+pip install -r requirements.txt
+uvicorn main:app --reload --port 3007
 ```
 
 **Service Registry:**
@@ -416,6 +433,20 @@ POST /search               # Semantic message search
 ```bash
 GET  /tools                        # List available tools
 POST /tools/calculator/calculate   # Mathematical operations
+GET  /tools/calculator/health      # Calculator tool health check
+POST /tools/web-scraper           # Web content extraction
+POST /tools/message-search        # Message search functionality
+```
+
+### Router Agent Service (Port 3007)
+```bash
+POST /api/v1/route         # Route query to appropriate agent
+POST /api/v1/analyze       # Analyze query routing without execution
+GET  /api/v1/status        # Router service status and available agents
+GET  /api/v1/agents        # List all available agents
+POST /api/v1/direct/{agent_type}  # Direct call to specific agent
+GET  /health               # Router health check
+```
 GET  /tools/calculator/health      # Calculator tool health check
 POST /tools/web-scraper           # Web content extraction
 POST /tools/message-search        # Message search functionality

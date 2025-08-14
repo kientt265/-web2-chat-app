@@ -75,6 +75,25 @@ services:
     networks:
       - app-network
 
+  router-agent:
+    build:
+      context: ./back/router-agent
+      dockerfile: Dockerfile
+    ports:
+      - "3007:3007"
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - ROUTER_AGENT_PORT=3007
+      - TOOL_AGENT_URL=http://agent:3004
+      - HISTORY_AGENT_URL=http://sync-service:3005
+    depends_on:
+      - agent
+      - sync-service
+    volumes:
+      - ./back/router-agent:/app
+    networks:
+      - app-network
+
   auth-db:
     image: postgres:15
     environment:
