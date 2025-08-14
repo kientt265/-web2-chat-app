@@ -56,22 +56,22 @@ services:
     networks:
       - app-network
 
-  agent:
+  tool-agent:
     build:
-      context: ./back/agent
+      context: ./back/tool-agent
       dockerfile: Dockerfile
     ports:
       - "3004:3004"
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
-      - AGENT_PORT=3004
-      - AGENT_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@auth-db:5432/auth_db?schema=public
+      - TOOL_AGENT_PORT=3004
+      - TOOL_AGENT_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@auth-db:5432/auth_db?schema=public
       - SERVICE_REGISTRY_URL=http://service-registry:3003
     depends_on:
       - auth-db
       - service-registry
     volumes:
-      - ./back/agent:/app
+      - ./back/tool-agent:/app
     networks:
       - app-network
 
@@ -84,10 +84,10 @@ services:
     environment:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - ROUTER_AGENT_PORT=3007
-      - TOOL_AGENT_URL=http://agent:3004
+      - TOOL_AGENT_URL=http://tool-agent:3004
       - HISTORY_AGENT_URL=http://sync-service:3005
     depends_on:
-      - agent
+      - tool-agent
       - sync-service
     volumes:
       - ./back/router-agent:/app

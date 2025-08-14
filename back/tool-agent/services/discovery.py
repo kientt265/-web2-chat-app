@@ -56,6 +56,24 @@ class ServiceDiscoveryClient:
             logger.error(f"Failed to discover tool services: {e}")
             return []
 
+    async def get_all_tools_from_registry(self) -> List[Dict[str, Any]]:
+        """Get all available tools from all services via service registry.
+
+        Returns:
+            List of all tool definitions from all registered services
+        """
+        try:
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                response = await client.get(f"{self.registry_url}/api/v1/tools")
+                response.raise_for_status()
+
+                data = response.json()
+                return data.get("tools", [])
+
+        except Exception as e:
+            logger.error(f"Failed to get all tools from service registry: {e}")
+            return []
+
     async def get_service_tools(self, service_url: str) -> List[Dict[str, Any]]:
         """Get available tools from a service.
 
@@ -67,6 +85,28 @@ class ServiceDiscoveryClient:
         """
         try:
             async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                # First try to get tools via service registry by service name
+                # Extract service name from URL or use direct call
+                try:
+                    # Try to get service name from URL (assuming format like http://service-name:port)
+                    import re
+                    match = re.search(r'http://([^:]+)', service_url)
+                    if match:
+                        service_name = match.group(1)
+                        
+                        # Call service registry to get tools by service name
+                        registry_response = await client.get(
+                            f"{self.registry_url}/api/v1/tools/by-name/{service_name}"
+                        )
+                        
+                        if registry_response.status_code == 200:
+                            data = registry_response.json()
+                            return data.get("tools", [])
+                        
+                except Exception as registry_error:
+                    logger.debug(f"Failed to get tools via service registry: {registry_error}")
+                
+                # Fallback to direct service call
                 response = await client.get(f"{service_url}/tools")
                 response.raise_for_status()
 
@@ -132,6 +172,45 @@ class DynamicToolLoader:
         """
         tools = []
 
+        # Try to get all tools efficiently via service registry first
+        try:
+            all_tools_data = await self.service_discovery.get_all_tools_from_registry()
+            if all_tools_data:
+                logger.info(f"Got {len(all_tools_data)} tools from service registry")
+                
+                # Group tools by service for processing
+                service_tools_map = {}
+                for tool_info in all_tools_data:
+                    service_name = tool_info.get("service_name")
+                    service_url = tool_info.get("service_url")
+                    if service_name and service_url:
+                        if service_name not in service_tools_map:
+                            service_tools_map[service_name] = {
+                                "url": service_url,
+                                "tools": []
+                            }
+                        service_tools_map[service_name]["tools"].append(tool_info)
+                
+                # Create tools from the registry data
+                for service_name, service_data in service_tools_map.items():
+                    service_url = service_data["url"]
+                    service_tools = service_data["tools"]
+                    
+                    for tool_info in service_tools:
+                        tool = self._create_tool(service_url, tool_info)
+                        if tool:
+                            tools.append(tool)
+                            tool_key = f"{service_name}_{tool_info['name']}"
+                            self.loaded_tools[tool_key] = tool
+                            logger.debug(f"Loaded tool: {tool.name}")
+                
+                logger.info(f"Successfully loaded {len(tools)} tools via service registry")
+                return tools
+                
+        except Exception as e:
+            logger.warning(f"Failed to load tools via service registry, falling back to individual discovery: {e}")
+
+        # Fallback to original discovery method
         # Discover tool services
         services = await self.service_discovery.discover_tool_services()
         logger.info(f"Discovered {len(services)} tool services")

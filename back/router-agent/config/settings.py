@@ -35,9 +35,9 @@ class RouterConfig:
     def get_agent_endpoints(cls) -> Dict[str, str]:
         """Get all agent endpoint URLs."""
         return {
-            "tool-agent": f"{cls.TOOL_AGENT_URL}/api/v1/agent/process",
+            "tool-agent": f"{cls.TOOL_AGENT_URL}/api/v1/process",
             "message-history-agent": f"{cls.HISTORY_AGENT_URL}/search/messages",
-            "general-agent": f"{cls.GENERAL_AGENT_URL}/api/v1/agent/process",
+            "general-agent": f"{cls.GENERAL_AGENT_URL}/api/v1/process",
         }
 
     @classmethod
