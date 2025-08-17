@@ -1,0 +1,13 @@
+# FastAPI core dependencies
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-multipart
+
+chromadb
+sentence-transformers
+
+httpx
+requests
+
