@@ -3,6 +3,7 @@ Main entry point for the Router Agent Service.
 
 This module sets up a FastAPI application that provides intelligent routing
 of user queries to specialized agents including tool-agent and message-history-agent.
+Supports both HTTP API and WebSocket connections for real-time communication.
 """
 
 import uvicorn
@@ -12,7 +13,7 @@ from api.v1.endpoints import router as router_v1
 
 app = FastAPI(
     title="Router Agent Service",
-    description="Intelligent routing service for directing queries to specialized agents. See /docs for Swagger UI.",
+    description="Intelligent routing service for directing queries to specialized agents. Supports HTTP API and WebSocket connections. See /docs for Swagger UI.",
     version="1.0.0",
     contact={"name": "KieZu Team", "email": "your@email.com"},
     docs_url="/docs",
@@ -37,6 +38,8 @@ def root():
         "description": "Routes user queries to specialized agents (tool-agent, message-history-agent, general-agent)",
         "docs": "/docs",
         "status_endpoint": "/api/v1/status",
+        "websocket_endpoint": "/api/v1/ws",
+        "websocket_stats": "/api/v1/ws/stats",
     }
 
 

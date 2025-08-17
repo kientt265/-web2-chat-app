@@ -6,3 +6,4 @@ fastapi
 uvicorn
 httpx
 python-dotenv
+websockets==11.0.3
