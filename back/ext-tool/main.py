@@ -19,7 +19,6 @@ from config.settings import settings
 from services import get_registration_client
 
 # Import tool routers
-from tools.search_messages.api import router as search_messages_router
 from tools.web_scraper.api import router as scraper_router
 from tools.calculator.api import router as calc_router
 
@@ -104,9 +103,6 @@ app.add_middleware(
 )
 
 # Include tool routers
-app.include_router(
-    search_messages_router, prefix="/tools/search-messages", tags=["Search Messages"]
-)
 app.include_router(scraper_router, prefix="/tools/scraper", tags=["Web Scraper"])
 app.include_router(calc_router, prefix="/tools/calculator", tags=["Calculator"])
 
@@ -120,11 +116,10 @@ async def root():
         "status": "running",
         "uptime_seconds": (datetime.now() - start_time).total_seconds(),
         "available_tools": [
-            "/tools/search-messages",
             "/tools/scraper",
             "/tools/calculator",
         ],
-    }
+    }   
 
 
 @app.get("/health")
@@ -142,11 +137,6 @@ async def list_tools():
     """List all available tools"""
     return {
         "tools": [
-            {
-                "name": "search-messages",
-                "path": "/tools/search-messages",
-                "description": "Semantic search tools for chat messages",
-            },
             {
                 "name": "scraper",
                 "path": "/tools/scraper",

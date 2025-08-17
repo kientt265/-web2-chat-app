@@ -53,7 +53,6 @@ class ServiceRegistrationClient:
                 "capabilities": ["search", "calculation", "scraping"],
                 "extra": {
                     "available_tools": [
-                        "/tools/search-messages",
                         "/tools/calculator",
                         "/tools/scraper",
                     ]
