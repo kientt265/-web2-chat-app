@@ -14,6 +14,7 @@ function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [content, setContent] = useState('');
   const socketRef = React.useRef<any>(null);
+  const botSocketRef = React.useRef<WebSocket | null>(null);
   const [showForm, setShowForm] = useState(false);
   const location = useLocation();
   const userId = location.state?.user_id;
@@ -30,6 +31,8 @@ function Chat() {
     };
     fetchConversations();
   }, []);
+
+  
 
   // Socket effect for real-time messages
   useEffect(() => {
@@ -65,6 +68,33 @@ function Chat() {
       setMessages([]);
     };
   }, [activeConversation]);
+
+
+  useEffect(() => {
+  const botSocket = new WebSocket("ws://localhost:3007/api/v1/ws");
+
+  botSocket.onopen = () => console.log("[BotSocket] ✅ Connected");
+
+  botSocket.onmessage = (event) => {
+    const botMessage = JSON.parse(event.data);
+    // Bot trả lời → add vào box đang active
+    // setMessages((prev) => [
+    //   ...prev,
+    //   {
+    //     conversation_id: activeConversation?.conversation_id,
+    //     sender_id: "ChatBot",
+    //     content: botMessage.content,
+    //     message_id: botMessage.message_id || Date.now().toString(),
+    //   },
+    // ]);
+  };
+
+  botSocketRef.current = botSocket;
+
+  return () => {
+    botSocket.close();
+  };
+}, []);
 
   const handleGetMessages = async (conversationId: string) => {
     try {
