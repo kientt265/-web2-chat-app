@@ -6,7 +6,7 @@ routes user queries to appropriate specialized agents.
 """
 
 import time
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect, Request
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from typing import Dict
 
 from api.v1.schemas import (
