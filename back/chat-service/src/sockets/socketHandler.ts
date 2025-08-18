@@ -3,9 +3,119 @@ import { producer } from '../config/kafka';
 import { Server, Socket } from "socket.io";
 import { randomUUID } from "crypto";
 import { authSocket } from "../middleware/authSocket";
+import WebSocket from 'ws';
+
 const prisma = new PrismaClient();
+let botWs: WebSocket | null = null;
+
+function connectBot(io: Server) {
+    if (botWs === null || botWs.readyState === WebSocket.CLOSED) {
+        try {
+            botWs = new WebSocket('ws://127.0.0.1:3007/api/v1/ws');
+            
+            botWs.on('open', () => {
+                console.log('[Bot] ✅ Connected to bot service');
+                // Gửi ping để kiểm tra kết nối
+                sendPing();
+            });
+
+            botWs.on('close', (code: number, reason: string) => {
+                console.log(`[Bot] 🔌 Disconnected from bot service | Code: ${code} | Reason: ${reason}`);
+                botWs = null;
+                // Thử kết nối lại sau 5 giây
+                setTimeout(() => connectBot(io), 5000);
+            });
+
+            botWs.on('error', (error) => {
+                console.error('[Bot] ❌ WebSocket error:', error);
+                if (error.message.includes('ECONNREFUSED')) {
+                    console.error('[Bot] ❌ Bot service is not running or not accessible');
+                } else if (error.message.includes('ETIMEDOUT')) {
+                    console.error('[Bot] ❌ Connection attempt timed out');
+                } else if (error.message.includes('ENOTFOUND')) {
+                    console.error('[Bot] ❌ Could not resolve host');
+                }
+            });
+
+            // Thêm xử lý ping/pong để kiểm tra kết nối
+            let pingInterval: NodeJS.Timeout;
+            let pingTimeout: NodeJS.Timeout;
+
+            function sendPing() {
+                if (botWs && botWs.readyState === WebSocket.OPEN) {
+                    botWs.send(JSON.stringify({
+                        type: 'ping',
+                        data: {},
+                        message_id: randomUUID(),
+                        timestamp: new Date().toISOString()
+                    }));
+
+                    // Đặt timeout cho ping
+                    pingTimeout = setTimeout(() => {
+                        console.error('[Bot] ❌ Ping timeout - no pong received');
+                        botWs?.close(1000, 'Ping timeout');
+                    }, 5000); // 5 giây timeout cho ping
+                }
+            }
+
+            botWs.on('message', (data) => {
+                try {
+                    const response = JSON.parse(data.toString());
+                    
+                    // Xử lý pong
+                    if (response.type === 'pong') {
+                        clearTimeout(pingTimeout);
+                        return;
+                    }
+
+                    // Xử lý error message từ bot
+                    if (response.type === 'error') {
+                        console.error(`[Bot] ❌ Error from bot service: ${response.data.error}`);
+                        if (response.data.code === 'VALIDATION_ERROR') {
+                            console.error('[Bot] ❌ Invalid message format sent to bot');
+                        }
+                        return;
+                    }
+
+                    // Xử lý response message
+                    if (response.type === 'response' && response.data && response.session_id) {
+                        io.to(response.session_id).emit('new_message', {
+                            message_id: randomUUID(),
+                            conversation_id: response.session_id,
+                            sender_id: 'bot',
+                            content: response.data.response,
+                            sent_at: new Date().toISOString(),
+                            is_read: false
+                        });
+                    }
+                } catch (error) {
+                    console.error('[Bot] ❌ Error processing bot response:', error);
+                    if (error instanceof SyntaxError) {
+                        console.error('[Bot] ❌ Invalid JSON received from bot');
+                    }
+                }
+            });
+
+            // Bắt đầu ping định kỳ
+            pingInterval = setInterval(sendPing, 30000); // Ping mỗi 30 giây
+
+            // Cleanup khi đóng kết nối
+            botWs.on('close', () => {
+                clearInterval(pingInterval);
+                clearTimeout(pingTimeout);
+            });
+
+        } catch (error) {
+            console.error('[Bot] ❌ Error creating WebSocket connection:', error);
+            setTimeout(() => connectBot(io), 5000);
+        }
+    }
+}
 
 export const handleSocketConnection = (io: Server) => {
+    // Khởi tạo kết nối WebSocket với bot service
+    connectBot(io);
+
     io.use(authSocket).on('connection', (socket: Socket) => {
         console.log(`[Socket] ✨ New client connected | ID: ${socket.id}`);
         console.log(`[Socket] 🔑 Auth token:`, socket.handshake.auth);
@@ -82,6 +192,27 @@ export const handleSocketConnection = (io: Server) => {
                     sent_at: new Date().toISOString(),
                     is_read: false
                 };
+
+                // Check if message starts with @bot
+                if (data.content.startsWith('@bot ')) {
+                    const command = data.content.substring(5); // Remove '@bot '
+                    if (botWs && botWs.readyState === WebSocket.OPEN) {
+                        botWs.send(JSON.stringify({
+                            type: 'query',
+                            data: {
+                                message: command
+                            },
+                            session_id: data.conversation_id,
+                            message_id: randomUUID(),
+                            timestamp: new Date().toISOString()
+                        }));
+                    } else {
+                        console.error('[Bot] ❌ Bot service is not connected');
+                        socket.emit('error', { 
+                            message: 'Bot service is temporarily unavailable'
+                        });
+                    }
+                }
 
                 const topic = conversation?.type === 'group' ? 'group-chat-messages' : 'private-chat-messages';
                 console.log(`[Socket] 📤 Sending message to Kafka topic: ${topic}`);
