@@ -3,9 +3,62 @@ import { producer } from '../config/kafka';
 import { Server, Socket } from "socket.io";
 import { randomUUID } from "crypto";
 import { authSocket } from "../middleware/authSocket";
+import {ResponeAI} from "../types/types";
+import WebSocket from 'ws';
+
 const prisma = new PrismaClient();
+let botWs: WebSocket;
+
+export const connectBotSocket = (io: Server) => {
+    try {
+        botWs = new WebSocket("ws://web2-chat-app-router-agent-1:3007/api/v1/ws");
+        botWs.on('open', () => {
+            console.log("✅ Connected to Router Agent WebSocket");
+            botWs.send(JSON.stringify({
+                type: "ping",
+                data: {},
+                message_id: "ping-1"
+            }));
+        });
+
+        botWs.on('message', (msg: WebSocket.RawData) => {
+            const message = JSON.parse(msg.toString()) as ResponeAI;
+            console.log("📩 Received:", message);
+
+            if (message.type === "response") {
+                const botMessage = {
+                    message_id: randomUUID(),
+                    conversation_id: message.data.session_id,
+                    sender_id: "00000000-0000-0000-0000-000000000001", 
+                    content: message.data.response, 
+                    sent_at: new Date().toISOString(),
+                    is_read: false
+                };
+
+                io.to(message.data.session_id).emit('new_message', botMessage);
+
+                prisma.messages.create({ data: botMessage })
+                    .then(() => console.log(`[Bot] ✅ Bot reply saved to DB`))
+                    .catch(err => console.error(`[Bot] ❌ Failed to save bot reply:`, err));
+            }
+        });
+
+        botWs.on('close', () => {
+            console.log("❌ Disconnected from Router Agent WebSocket");
+        });
+
+        botWs.on('error', (err) => {
+            console.error("⚠️ WebSocket error:", err);
+        });
+    } catch (error) {
+        console.error("[Bot] ❌ Failed to connect to Router Agent WebSocket:", error);
+    }
+}
 
 export const handleSocketConnection = (io: Server) => {
+    console.log("[Init] handleSocketConnection called");
+
+
     io.use(authSocket).on('connection', (socket: Socket) => {
         console.log(`[Socket] ✨ New client connected | ID: ${socket.id}`);
         console.log(`[Socket] 🔑 Auth token:`, socket.handshake.auth);
@@ -14,17 +67,6 @@ export const handleSocketConnection = (io: Server) => {
             try {
                 const userId = socket.handshake.auth.token; // Assuming token is user ID
                 console.log(`[Socket] 🚪 User ${socket.id} attempting to join conversation ${conversationId}`);
-                
-                // const isMember = await prisma.conversation_members.findFirst({
-                //     where: { conversation_id: conversationId, user_id: userId },
-                // });
-
-                // if (!isMember) {
-                //     console.warn(`[Socket] ⚠️ User ${socket.id} not authorized for conversation ${conversationId}`);
-                //     socket.emit('error', { message: 'Not authorized to join this conversation' });
-                //     return;
-                // }
-
                 socket.join(conversationId);
                 console.log(`[Socket] ✅ User ${socket.id} joined conversation ${conversationId}`);
                 socket.emit('join_success', { conversationId });
@@ -34,10 +76,10 @@ export const handleSocketConnection = (io: Server) => {
             }
         });
 
-        socket.on('send_message', async (data: { 
-            conversation_id: string; 
-            sender_id: string; 
-            content: string 
+        socket.on('send_message', async (data: {
+            conversation_id: string;
+            sender_id: string;
+            content: string
         }) => {
             console.log(`[Socket] 📩 Message received from client:`, data);
             try {
@@ -83,9 +125,28 @@ export const handleSocketConnection = (io: Server) => {
                     is_read: false
                 };
 
+                if (data.content.startsWith('@bot ')) {
+                    const command = data.content.substring(5); 
+                    if (botWs && botWs.readyState === WebSocket.OPEN) {
+                        botWs.send(JSON.stringify({
+                            type: 'query',
+                            data: {
+                                message: command
+                            },
+                            session_id: data.conversation_id, 
+                        }));
+                        console.log(`[Bot] 📤 Sent command to bot: ${command}`);
+                    } else {
+                        console.error('[Bot] ❌ Bot service is not connected');
+                        socket.emit('error', {
+                            message: 'Bot service is temporarily unavailable'
+                        });
+                    }
+                }
+
                 const topic = conversation?.type === 'group' ? 'group-chat-messages' : 'private-chat-messages';
                 console.log(`[Socket] 📤 Sending message to Kafka topic: ${topic}`);
-                
+
                 await producer.send({
                     topic,
                     messages: [{ value: JSON.stringify(message) }],
@@ -97,7 +158,7 @@ export const handleSocketConnection = (io: Server) => {
 
             } catch (error) {
                 console.error('[Socket] ❌ Error processing message:', error);
-                socket.emit('error', { 
+                socket.emit('error', {
                     message: (error instanceof Error ? error.message : 'Failed to send message')
                 });
             }
@@ -109,7 +170,7 @@ export const handleSocketConnection = (io: Server) => {
     });
 }
 
-// Helper function to validate UUID format
+
 function isValidUUID(uuid: string) {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     return uuidRegex.test(uuid);

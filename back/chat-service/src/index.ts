@@ -7,7 +7,7 @@ import { config } from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import chatRoutes from './routes/chatRoutes';
 import { initKafka } from './services/kafkaService';
-import { handleSocketConnection } from './sockets/socketHandler';
+import { handleSocketConnection, connectBotSocket } from './sockets/socketHandler';
 config();
 
 const prisma = new PrismaClient();
@@ -24,9 +24,11 @@ const  io = new Server(server, {
 });
 const port = process.env.CHAT_PORT || 3002;
 
-
+connectBotSocket(io);
 
 handleSocketConnection(io);
+
+
 
 //cors for http://localhost:5173
 app.use(cors({

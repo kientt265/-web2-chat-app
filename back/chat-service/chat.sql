@@ -27,3 +27,5 @@ CREATE TABLE message_deliveries (
     read_at TIMESTAMP,
     PRIMARY KEY (message_id, user_id)
 );
+
+
