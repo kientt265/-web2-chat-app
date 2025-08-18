@@ -66,6 +66,8 @@ function Chat() {
     };
   }, [activeConversation]);
 
+
+
   const handleGetMessages = async (conversationId: string) => {
     try {
       console.log('[Chat] 📥 Fetching message history...');
@@ -98,6 +100,7 @@ function Chat() {
     socketRef.current.emit('send_message', newMessage);
     setContent('');
   };
+  //
 
   const handleConversationClick = async (conv: Conversation) => {
     setActiveConversation(conv);

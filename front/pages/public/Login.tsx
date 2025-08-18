@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAtom } from 'jotai';
 import { authAtom } from '../../context/auth';
 import type { User } from '../../types/index.ts';
+import logo from '../../src/assets/LoGo.png';
 
 
 function Login() {
@@ -46,8 +47,9 @@ function Login() {
         }
     }
     return (
-        <div>
-            <form onSubmit={handleSumit} className='flex flex-col gap-2 justify-center items-center h-screen '>
+        <div className='flex flex-col justify-center items-center h-screen gap-6'>
+            <img src={logo} alt="" className="w-1/5 object-contain" />
+            <form onSubmit={handleSumit} className='flex flex-col gap-3 justify-center items-center w-full max-w-sm bg-white p-6 rounded-xl shadow-md '>
                 {error && <div className="text-red-500 text-center">{error}</div>}
                 <input className='p-3  border rounded'
                     type="email"
@@ -72,8 +74,8 @@ function Login() {
                 >{loading ? 'Logging in...' : 'Login'}</button>
                 <p className="text-center">
                     Don't have an account?{' '}
-                    <a href="/register" className="text-blue-600 hover:underline">
-                        Register
+                    <a href="/SignUp" className="text-blue-600 hover:underline">
+                        Sign Up
                     </a>
                 </p>
             </form>

@@ -2,6 +2,7 @@ import { userService } from '../../services/api.ts';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { User } from '../../types';
+import logo from '../../src/assets/LoGo.png';
 
 function Signup() {
     const [formData, setFormData] = useState<User>({
@@ -37,8 +38,9 @@ function Signup() {
     }
 
     return (
-        <div>
-        <form onSubmit={handleSumit} className='flex flex-col gap-2 justify-center items-center h-screen '>
+        <div className='flex flex-col justify-center items-center h-screen gap-6'>
+         <img src={logo} alt="" className="w-1/5 object-contain" />      
+        <form onSubmit={handleSumit} className='flex flex-col gap-3 justify-center items-center w-full max-w-sm bg-white p-6 rounded-xl shadow-md '>
         {error && <div className="text-red-500 text-center">{error}</div>}
             <input className='p-3  border rounded' 
                 type="text" 
@@ -75,8 +77,8 @@ function Signup() {
                     >{loading ? 'Logging in...' : 'SignUp'}</button>
             <p className="text-center">
           You have an account?{' '}
-          <a href="/login" className="text-blue-600 hover:underline">
-            Register
+          <a href="/" className="text-blue-600 hover:underline">
+            Log In
           </a>
         </p>
         </form>
