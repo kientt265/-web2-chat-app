@@ -125,7 +125,7 @@ class ChromaDBService:
 
     async def search_similar(
         self,
-        query_embedding: List[float],
+        query_texts: str,
         conversation_id: Optional[str] = None,
         sender_id: Optional[str] = None,
         limit: int = 10,
@@ -135,6 +135,7 @@ class ChromaDBService:
             raise RuntimeError("ChromaDB not initialized")
 
         try:
+
             # Build where clause
             where_clause = {}
             if conversation_id:
@@ -144,7 +145,7 @@ class ChromaDBService:
 
             # Perform semantic search
             results = self.collection.query(
-                query_embeddings=[query_embedding],
+                query_texts=[query_texts],
                 n_results=limit,
                 where=where_clause if where_clause else None,
                 include=["metadatas", "documents", "distances"],

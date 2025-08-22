@@ -1,1 +1,3 @@
-# Empty file to make this a Python package
+"""
+Configuration settings for the message agent
+"""

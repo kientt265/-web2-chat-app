@@ -5,9 +5,20 @@ pydantic
 pydantic-settings
 python-multipart
 
-chromadb
-sentence-transformers
+# ChromaDB and ML dependencies with NumPy compatibility
+chromadb==1.0.20
+numpy==2.3.2
+# LangGraph and LangChain dependencies
+langgraph
+langchain
+langchain-openai
+langchain-core
+langchain-community
 
+anyio==4.10.0
+websockets==14.2
+
+# Additional dependencies
 httpx
 requests
 

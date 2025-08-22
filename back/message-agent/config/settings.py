@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
 
     # ChromaDB
-    chromadb_host: str = "chromadb"
+    chromadb_host: str = "0.0.0.0"
     chromadb_port: int = 8000
     chromadb_collection_name: str = "chat_messages"
 

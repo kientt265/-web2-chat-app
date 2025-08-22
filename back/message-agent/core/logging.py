@@ -4,7 +4,6 @@ Logging configuration
 
 import logging
 import sys
-from typing import Any
 from config.settings import settings
 
 

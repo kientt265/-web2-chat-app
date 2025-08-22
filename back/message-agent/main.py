@@ -13,16 +13,17 @@ from typing import Optional
 
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+
 import uvicorn
 
 # Core imports
-from config.settings import settings
-from models.api import MessageResponse, MessageResult, HealthResponse
+from models.api import MessageResult
 from api.health import router as health_router
+from api.messages import router as messages_router
+from api.agent import router as agent_router
 
 # Global service instances
 chromadb_service = None
-embedding_service = None
 service_mode = "mock"  # "chromadb" or "mock"
 start_time = datetime.now()
 
@@ -32,7 +33,6 @@ logging.basicConfig(level=logging.INFO)
 # Try to import ChromaDB services, but don't fail if they're not available
 try:
     from services.chromadb_service import ChromaDBService
-    from services.embedding_service import EmbeddingService
     CHROMADB_AVAILABLE = True
     logger.info("ChromaDB dependencies are available")
 except ImportError as e:
@@ -120,8 +120,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include health router
+# Include routers
 app.include_router(health_router)
+app.include_router(messages_router)
+app.include_router(agent_router)
 
 
 @app.get("/", tags=["info"])
@@ -141,237 +143,43 @@ async def root():
     }
 
 
-async def generate_mock_messages(
-    conversation_id: Optional[str] = None,
-    sender_id: Optional[str] = None,
-    limit: int = 10,
-    offset: int = 0
-) -> tuple[list[MessageResult], int]:
-    """Generate mock messages for fallback mode."""
+# async def generate_mock_messages(
+#     conversation_id: Optional[str] = None,
+#     sender_id: Optional[str] = None,
+#     limit: int = 10,
+#     offset: int = 0
+# ) -> tuple[list[MessageResult], int]:
+#     """Generate mock messages for fallback mode."""
     
-    # Generate mock data
-    messages = []
-    total_messages = 50  # Mock total
+#     # Generate mock data
+#     messages = []
+#     total_messages = 50  # Mock total
     
-    for i in range(offset, min(offset + limit, total_messages)):
-        # Apply filters
-        if conversation_id:
-            mock_conversation_id = conversation_id
-        else:
-            mock_conversation_id = f"conv-{i % 4}"
+#     for i in range(offset, min(offset + limit, total_messages)):
+#         # Apply filters
+#         if conversation_id:
+#             mock_conversation_id = conversation_id
+#         else:
+#             mock_conversation_id = f"conv-{i % 4}"
         
-        if sender_id:
-            mock_sender_id = sender_id
-        else:
-            mock_sender_id = f"user-{i % 2}"
+#         if sender_id:
+#             mock_sender_id = sender_id
+#         else:
+#             mock_sender_id = f"user-{i % 2}"
         
-        message = MessageResult(
-            message_id=f"msg-{i}",
-            conversation_id=mock_conversation_id,
-            sender_id=mock_sender_id,
-            content=f"Mock message content {i}",
-            sent_at=datetime.now(),
-            similarity_score=None
-        )
-        messages.append(message)
+#         message = MessageResult(
+#             message_id=f"msg-{i}",
+#             conversation_id=mock_conversation_id,
+#             sender_id=mock_sender_id,
+#             content=f"Mock message content {i}",
+#             sent_at=datetime.now(),
+#             similarity_score=None
+#         )
+#         messages.append(message)
     
-    return messages, total_messages
+#     return messages, total_messages
 
 
-@app.get("/api/v1/messages/", response_model=MessageResponse)
-async def get_messages(
-    conversation_id: Optional[str] = Query(None, description="Filter by conversation ID"),
-    sender_id: Optional[str] = Query(None, description="Filter by sender ID"),
-    limit: int = Query(10, ge=1, le=100, description="Number of messages to retrieve"),
-    offset: int = Query(0, ge=0, description="Number of messages to skip")
-):
-    """
-    Retrieve messages with optional filters.
-    
-    Uses ChromaDB when available, falls back to mock data otherwise.
-    """
-    start_time_req = asyncio.get_event_loop().time()
-    
-    try:
-        if service_mode == "chromadb" and chromadb_service:
-            # Use ChromaDB service
-            messages = await chromadb_service.get_messages(
-                conversation_id=conversation_id,
-                sender_id=sender_id,
-                limit=limit,
-                offset=offset
-            )
-            
-            total_messages = len(messages)
-            has_more = len(messages) == limit
-            
-        else:
-            # Use mock data
-            messages, total_messages = await generate_mock_messages(
-                conversation_id=conversation_id,
-                sender_id=sender_id,
-                limit=limit,
-                offset=offset
-            )
-            has_more = (offset + limit) < total_messages
-        
-        end_time_req = asyncio.get_event_loop().time()
-        processing_time = (end_time_req - start_time_req) * 1000
-        
-        return MessageResponse(
-            messages=messages,
-            total_messages=total_messages,
-            page_info={
-                "limit": limit,
-                "offset": offset,
-                "has_more": has_more,
-                "mode": service_mode
-            },
-            processing_time_ms=processing_time
-        )
-        
-    except Exception as e:
-        logger.error(f"Error retrieving messages: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving messages: {str(e)}")
-
-
-@app.post("/api/v1/search", response_model=MessageResponse)
-async def search_messages(
-    query: str = Query(..., description="Search query"),
-    conversation_id: Optional[str] = Query(None, description="Filter by conversation ID"),
-    limit: int = Query(10, ge=1, le=100, description="Number of messages to retrieve"),
-    similarity_threshold: float = Query(0.7, ge=0.0, le=1.0, description="Minimum similarity score")
-):
-    """
-    Search messages using semantic similarity.
-    
-    Uses ChromaDB when available, returns mock results otherwise.
-    """
-    start_time_req = asyncio.get_event_loop().time()
-    
-    try:
-        if service_mode == "chromadb" and chromadb_service and embedding_service:
-            # Generate embedding for the query
-            query_embedding = embedding_service.encode(query)
-            
-            # Use ChromaDB for semantic search
-            messages = await chromadb_service.search_similar(
-                query_embedding=query_embedding,
-                conversation_id=conversation_id,
-                limit=limit
-            )
-            
-            # Filter by similarity threshold
-            filtered_messages = [msg for msg in messages if msg.similarity_score and msg.similarity_score >= similarity_threshold]
-            
-            total_messages = len(filtered_messages)
-            has_more = False  # Search results don't have pagination
-            
-        else:
-            # Return mock search results
-            messages, _ = await generate_mock_messages(
-                conversation_id=conversation_id,
-                limit=min(limit, 5)
-            )
-            
-            # Add mock similarity scores
-            for i, message in enumerate(messages):
-                message.similarity_score = max(0.8 - (i * 0.05), 0.6)
-            
-            # Filter by threshold
-            filtered_messages = [msg for msg in messages if msg.similarity_score >= similarity_threshold]
-            total_messages = len(filtered_messages)
-            has_more = False
-        
-        end_time_req = asyncio.get_event_loop().time()
-        processing_time = (end_time_req - start_time_req) * 1000
-        
-        return MessageResponse(
-            messages=filtered_messages,
-            total_messages=total_messages,
-            page_info={
-                "query": query,
-                "limit": limit,
-                "similarity_threshold": similarity_threshold,
-                "has_more": has_more,
-                "mode": service_mode
-            },
-            processing_time_ms=processing_time
-        )
-        
-    except Exception as e:
-        logger.error(f"Error searching messages: {e}")
-        raise HTTPException(status_code=500, detail=f"Error searching messages: {str(e)}")
-
-
-@app.get("/api/v1/messages/recent", response_model=MessageResponse)
-async def get_recent_messages(
-    conversation_id: Optional[str] = Query(None, description="Filter by conversation ID"),
-    limit: int = Query(20, ge=1, le=100, description="Number of recent messages to retrieve")
-):
-    """
-    Get recent messages from ChromaDB or mock data.
-    """
-    start_time_req = asyncio.get_event_loop().time()
-    
-    try:
-        if service_mode == "chromadb" and chromadb_service:
-            # Use ChromaDB service
-            messages = await chromadb_service.get_recent_messages(
-                conversation_id=conversation_id,
-                limit=limit
-            )
-            total_messages = len(messages)
-            
-        else:
-            # Use mock data sorted by recent
-            messages, _ = await generate_mock_messages(
-                conversation_id=conversation_id,
-                limit=limit
-            )
-            total_messages = len(messages)
-        
-        end_time_req = asyncio.get_event_loop().time()
-        processing_time = (end_time_req - start_time_req) * 1000
-        
-        return MessageResponse(
-            messages=messages,
-            total_messages=total_messages,
-            page_info={
-                "limit": limit,
-                "type": "recent",
-                "has_more": False,
-                "mode": service_mode
-            },
-            processing_time_ms=processing_time
-        )
-        
-    except Exception as e:
-        logger.error(f"Error retrieving recent messages: {e}")
-        raise HTTPException(status_code=500, detail=f"Error retrieving recent messages: {str(e)}")
-
-
-@app.get("/api/v1/messages/{message_id}", response_model=MessageResult)
-async def get_message_by_id(message_id: str):
-    """
-    Get a specific message by ID.
-    """
-    try:
-        # For now, return mock response
-        message = MessageResult(
-            message_id=message_id,
-            conversation_id="conv-1",
-            sender_id="user-1",
-            content=f"Mock message content for {message_id}",
-            sent_at=datetime.now(),
-            similarity_score=None
-        )
-        
-        return message
-        
-    except Exception as e:
-        logger.error(f"Error retrieving message {message_id}: {e}")
-        raise HTTPException(status_code=404, detail=f"Message {message_id} not found")
 
 
 if __name__ == "__main__":
