@@ -1,0 +1,25 @@
+# FastAPI core dependencies
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-multipart
+
+# ChromaDB and ML dependencies with NumPy compatibility
+chromadb==1.0.20
+numpy==2.3.2
+# LangGraph and LangChain dependencies
+langgraph
+langchain
+langchain-google-genai
+langchain-core
+langchain-community
+google-generativeai
+
+anyio==4.10.0
+websockets==14.2
+
+# Additional dependencies
+httpx
+requests
+

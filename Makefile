@@ -5,22 +5,22 @@ install:
 
 # Add python environment
 python-install:
-	cd back/agent && \
+	cd back/ && \
 	python3 -m venv .venv && \
 	source .venv/bin/activate && \
 	pip install -r requirements.txt
 	
 # Python lint and format (chat-bot)
 lint-python:
-	cd back/agent && \
+	cd back && \
 	source .venv/bin/activate && \
-	ruff check ../agent ../ext-tool ../sync-service ../service-registry ../router-agent || echo "No linting issues found"
+	ruff check ./tool-agent ./message-agent ./ext-tool ./sync-service ./service-registry ./router-agent || echo "No linting issues found"
 
 	
 format-python:
-	cd back/agent && \
+	cd back && \
 	source .venv/bin/activate && \
-	ruff format ../agent ../ext-tool ../sync-service ../service-registry ../router-agent || echo "No formatting issues found"
+	ruff format ./tool-agent ./message-agent ./ext-tool ./sync-service ./service-registry ./router-agent || echo "No formatting issues found"
 
 # Node.js lint (if eslint is set up)
 lint-node:

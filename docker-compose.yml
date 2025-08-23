@@ -196,6 +196,24 @@ services:
     networks:
       - app-network
 
+  message-agent:
+    build:
+      context: ./back/message-agent
+      dockerfile: Dockerfile
+    ports:
+      - "3008:3008"
+    environment:
+      - MESSAGE_AGENT_PORT=3008
+      - CHROMADB_HOST=chromadb
+      - CHROMADB_PORT=8000
+      - LOG_LEVEL=INFO
+    depends_on:
+      - chromadb
+    volumes:
+      - ./back/message-agent:/app
+    networks:
+      - app-network
+
   # ChromaDB for vector storage
   chromadb:
     image: chromadb/chroma:latest
