@@ -9,8 +9,12 @@ class MessageService:
         Search messages in the database using the provided query and agent type.
         """
         try:
+            # Check if ChromaDB is initialized
+            if not self.chromadb_service or not self.chromadb_service.collection:
+                raise RuntimeError("ChromaDB not initialized")
+                
             results = await self.chromadb_service.search_similar(
-                query_texts=[query_texts],
+                query_texts=query_texts,  # Pass as string, not list
                 conversation_id=conversation_id,
                 sender_id=sender_id,
                 limit=limit

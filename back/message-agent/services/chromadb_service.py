@@ -66,16 +66,24 @@ class ChromaDBService:
             raise RuntimeError("ChromaDB not initialized")
 
         try:
-            # Build where clause
-            where_clause = {}
-            if conversation_id:
-                where_clause["conversation_id"] = conversation_id
-            if sender_id:
-                where_clause["sender_id"] = sender_id
+            # Build where clause with proper ChromaDB syntax
+            where_clause = None
+            if conversation_id and sender_id:
+                # Use $and operator for multiple conditions
+                where_clause = {
+                    "$and": [
+                        {"conversation_id": {"$eq": conversation_id}},
+                        {"sender_id": {"$eq": sender_id}}
+                    ]
+                }
+            elif conversation_id:
+                where_clause = {"conversation_id": {"$eq": conversation_id}}
+            elif sender_id:
+                where_clause = {"sender_id": {"$eq": sender_id}}
 
             # Get all matching documents
             results = self.collection.get(
-                where=where_clause if where_clause else None,
+                where=where_clause,
                 include=["metadatas", "documents"],
             )
 
@@ -136,18 +144,26 @@ class ChromaDBService:
 
         try:
 
-            # Build where clause
-            where_clause = {}
-            if conversation_id:
-                where_clause["conversation_id"] = conversation_id
-            if sender_id:
-                where_clause["sender_id"] = sender_id
+            # Build where clause with proper ChromaDB syntax
+            where_clause = None
+            if conversation_id and sender_id:
+                # Use $and operator for multiple conditions
+                where_clause = {
+                    "$and": [
+                        {"conversation_id": {"$eq": conversation_id}},
+                        {"sender_id": {"$eq": sender_id}}
+                    ]
+                }
+            elif conversation_id:
+                where_clause = {"conversation_id": {"$eq": conversation_id}}
+            elif sender_id:
+                where_clause = {"sender_id": {"$eq": sender_id}}
 
             # Perform semantic search
             results = self.collection.query(
                 query_texts=[query_texts],
                 n_results=limit,
-                where=where_clause if where_clause else None,
+                where=where_clause,
                 include=["metadatas", "documents", "distances"],
             )
 

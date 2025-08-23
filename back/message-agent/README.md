@@ -56,43 +56,78 @@ Environment variables:
 - `CHROMADB_PORT`: ChromaDB port (default: 8000)
 - `LOG_LEVEL`: Logging level (default: INFO)
 
-## Usage
+## 🎯 Usage Examples
 
-### Basic Message Retrieval
+### AI Agent Query (Recommended)
 ```bash
-curl http://localhost:3008/api/v1/messages/?limit=10&offset=0
+# Natural language query processing
+curl -X POST http://localhost:3008/api/v1/agent/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Find messages about project updates",
+    "conversation_id": "conv-123",
+    "sender_id": "user-456"
+  }'
 ```
 
-### Semantic Search
+### Direct Message Retrieval
 ```bash
+# Basic message retrieval
+curl http://localhost:3008/api/v1/messages/?limit=10&offset=0
+
+# Semantic search
 curl -X POST http://localhost:3008/api/v1/messages/search \
   -H "Content-Type: application/json" \
   -d '{"query": "hello world", "limit": 5}'
-```
 
-### Get Conversation Messages
-```bash
+# Get conversation messages
 curl http://localhost:3008/api/v1/messages/conversation/conv-123?limit=50
-```
 
-### Get Recent Messages
-```bash
+# Get recent messages
 curl http://localhost:3008/api/v1/messages/recent?limit=20
 ```
 
-## Docker
+## 🔧 Setup for AI Features
+
+### 1. Get Gemini API Key
+1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. Create an API key
+3. Set environment variable: `export GOOGLE_API_KEY="your-key"`
+
+### 2. Test AI Integration
+```bash
+python test_gemini_agent.py
+```
+
+## 🐳 Docker
 
 The service runs on port 3008 externally and connects to ChromaDB for message storage.
 
-## Dependencies
+```dockerfile
+# Service runs with Gemini AI integration
+# Set GOOGLE_API_KEY for full AI capabilities
+ENV GOOGLE_API_KEY=your-gemini-api-key
+```
 
-- FastAPI for web framework
-- ChromaDB for vector database operations
-- Sentence Transformers for text embeddings
-- Pydantic for data validation
+## 📦 Dependencies
 
-## Development
+- **FastAPI**: Web framework and API
+- **LangGraph**: Workflow orchestration
+- **LangChain**: AI integration framework
+- **Google Gemini**: AI language model
+- **ChromaDB**: Vector database operations  
+- **Sentence Transformers**: Text embeddings
+- **Pydantic**: Data validation
+
+## 🚀 Development
 
 1. Install dependencies: `pip install -r requirements.txt`
-2. Run the service: `python main.py`
-3. Access API docs at: `http://localhost:3008/docs`
+2. Set API key: `export GOOGLE_API_KEY="your-key"` (optional)
+3. Run the service: `python main.py`
+4. Access API docs at: `http://localhost:3008/docs`
+5. Test AI agent: `python test_gemini_agent.py`
+
+## 📚 Documentation
+
+- [Gemini Integration Guide](GEMINI_INTEGRATION.md) - Detailed setup and usage
+- [LangGraph Workflows](agents/) - Agent implementation details

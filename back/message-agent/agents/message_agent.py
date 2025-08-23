@@ -20,14 +20,17 @@ from langchain_core.output_parsers import StrOutputParser
 try:
     from services.chromadb_service import chromadb_service
     from services.message_service import message_service
+    from core.initialization import ensure_chromadb_initialized
     SERVICES_AVAILABLE = True
 except ImportError as e:
     print(f"Warning: Services not available: {e}")
     chromadb_service = None
     message_service = None
+    ensure_chromadb_initialized = None
     SERVICES_AVAILABLE = False
 
 from core.logging import get_logger
+from core.rate_limiter import gemini_rate_limiter
 
 logger = get_logger(__name__)
 
@@ -36,12 +39,16 @@ class AgentState(TypedDict):
     """State for the message agent workflow"""
     messages: Annotated[List[BaseMessage], add_messages]
     query: str
+    search_term: str
     conversation_id: Optional[str]
     sender_id: Optional[str]
     search_results: Optional[List[Dict[str, Any]]]
     response: Optional[str]
     context: Optional[str]
     agent_action: Optional[str]
+    search_terms: Optional[List[str]]  # New: extracted search terms from LLM
+    search_filters: Optional[Dict[str, Any]]  # New: extracted filters from LLM
+    user_intent: Optional[str]  # New: user intent description from LLM
     error: Optional[str]
 
 
@@ -57,9 +64,15 @@ class MessageAgent:
         else:
             self.llm = ChatGoogleGenerativeAI(
                 google_api_key=self.gemini_api_key,
-                model="gemini-1.5-flash",
+                model="gemini-2.5-flash",
                 temperature=0.1,
-                convert_system_message_to_human=True
+                convert_system_message_to_human=True,
+                # Rate limiting configuration
+                max_retries=3,
+                request_timeout=30.0,
+                # Reduce requests per minute to stay within limits
+                max_tokens_per_minute=100000,
+                max_requests_per_minute=10
             )
         
         self.workflow = self._build_workflow()
@@ -93,43 +106,174 @@ class MessageAgent:
         
         return workflow
     
-    def _parse_query(self, state: AgentState) -> AgentState:
-        """Parse and analyze the incoming query"""
+    async def _parse_query(self, state: AgentState) -> AgentState:
+        """Parse the user query using LLM to determine search parameters and actions"""
         try:
             query = state.get("query", "")
             conversation_id = state.get("conversation_id")
-            sender_id = state.get("sender_id")
             
-            logger.info(f"Parsing query: {query}")
-            
-            # Determine the type of query and required action
-            if not query.strip():
+            if not query:
                 state["error"] = "Empty query provided"
                 return state
             
-            # Simple intent classification (can be enhanced with LLM)
-            query_lower = query.lower()
-            if any(word in query_lower for word in ["search", "find", "look for", "retrieve"]):
-                state["agent_action"] = "search"
-            elif any(word in query_lower for word in ["recent", "latest", "last"]):
-                state["agent_action"] = "recent"
-            else:
-                state["agent_action"] = "search"  # Default action
+            logger.info(f"Parsing query with LLM: {query}")
+            
+            # Use LLM to parse query and extract parameters
+            parsed_result = await self._llm_parse_query(query)
+            
+            # Update state with LLM-parsed information
+            state["agent_action"] = parsed_result.get("action", "search")
+            state["search_terms"] = parsed_result.get("search_terms", [])
+            state["search_filters"] = parsed_result.get("filters", {})
+            state["user_intent"] = parsed_result.get("intent", "")
             
             # Add system message to track the conversation
             system_msg = SystemMessage(
-                content=f"Processing message query for conversation: {conversation_id}"
+                content=f"Processing message query for conversation: {conversation_id}. Intent: {state['user_intent']}"
             )
             human_msg = HumanMessage(content=query)
             
             state["messages"] = [system_msg, human_msg]
             
+            logger.info(f"Parsed action: {state['agent_action']}, terms: {state['search_terms']}")
+            
             return state
             
         except Exception as e:
             logger.error(f"Error parsing query: {e}")
-            state["error"] = f"Query parsing failed: {str(e)}"
+            # Fallback to simple parsing
+            state.update(self._simple_parse_fallback(query, conversation_id))
             return state
+
+    async def _llm_parse_query(self, query: str) -> dict:
+        """Use LLM to intelligently parse user query and extract parameters"""
+        try:
+            # If no LLM available, fall back immediately
+            if not self.llm:
+                logger.info("No LLM available, using simple parsing fallback")
+                return self._simple_parse_fallback_dict(query)
+            
+            # Check rate limits before making LLM call
+            if not await gemini_rate_limiter.can_make_request():
+                logger.warning("Rate limit reached, falling back to simple parsing")
+                return self._simple_parse_fallback_dict(query)
+            
+            # Structured prompt for query parsing
+            parse_prompt = f"""
+Analyze this user query and extract the following information in JSON format:
+
+Query: "{query}"
+
+Extract:
+1. action: The primary action the user wants (search, recent, list, count, summary)
+2. search_terms: Array of important keywords/phrases to search for
+3. filters: Object with any filters like time, sender, etc.
+4. intent: Brief description of what the user is trying to accomplish
+
+Rules:
+- If query is just a word/phrase like "hi" or "hello", treat it as search terms
+- For "recent" or "latest" requests, set action to "recent"
+- Extract meaningful keywords, ignore stop words
+- Be liberal with search terms - include anything that might be relevant
+
+Return ONLY valid JSON, no other text:
+{{
+    "action": "search|recent|list|count|summary",
+    "search_terms": ["term1", "term2"],
+    "filters": {{}},
+    "intent": "brief description"
+}}
+"""
+
+            # Make LLM call with rate limiting
+            response = await self.llm.ainvoke([HumanMessage(content=parse_prompt)])
+            result_text = response.content.strip()
+            
+            # Try to parse JSON response
+            try:
+                import json
+                parsed_result = json.loads(result_text)
+                
+                # Validate required fields
+                if not isinstance(parsed_result.get("action"), str):
+                    parsed_result["action"] = "search"
+                if not isinstance(parsed_result.get("search_terms"), list):
+                    parsed_result["search_terms"] = [query]
+                if not isinstance(parsed_result.get("filters"), dict):
+                    parsed_result["filters"] = {}
+                if not isinstance(parsed_result.get("intent"), str):
+                    parsed_result["intent"] = "Search for messages"
+                
+                return parsed_result
+                
+            except json.JSONDecodeError as je:
+                logger.warning(f"Failed to parse LLM JSON response: {je}")
+                # Extract action and terms from text response as fallback
+                return self._extract_from_text_response(result_text, query)
+            
+        except Exception as e:
+            logger.error(f"LLM parsing failed: {e}")
+            return self._simple_parse_fallback_dict(query)
+
+    def _extract_from_text_response(self, text: str, original_query: str) -> dict:
+        """Extract information from non-JSON LLM response"""
+        text_lower = text.lower()
+        
+        # Try to extract action
+        if "recent" in text_lower or "latest" in text_lower:
+            action = "recent"
+        elif "search" in text_lower or "find" in text_lower:
+            action = "search"
+        else:
+            action = "search"
+        
+        # Use original query as search term
+        return {
+            "action": action,
+            "search_terms": [original_query],
+            "filters": {},
+            "intent": f"Process query: {original_query}"
+        }
+
+    def _simple_parse_fallback_dict(self, query: str) -> dict:
+        """Simple parsing fallback when LLM is unavailable"""
+        query_lower = query.lower()
+        
+        if any(word in query_lower for word in ["recent", "latest", "last"]):
+            action = "recent"
+        else:
+            action = "search"
+        
+        # Extract potential search terms (remove common stop words)
+        stop_words = {"the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by"}
+        terms = [word for word in query.lower().split() if word not in stop_words and len(word) > 2]
+        
+        if not terms:  # If no meaningful terms found, use the whole query
+            terms = [query]
+        
+        return {
+            "action": action,
+            "search_terms": terms,
+            "filters": {},
+            "intent": f"Simple parsing of: {query}"
+        }
+
+    def _simple_parse_fallback(self, query: str, conversation_id: str) -> dict:
+        """Simple parsing fallback that returns state updates"""
+        parsed = self._simple_parse_fallback_dict(query)
+        
+        system_msg = SystemMessage(
+            content=f"Processing message query for conversation: {conversation_id}. Intent: {parsed['intent']}"
+        )
+        human_msg = HumanMessage(content=query)
+        
+        return {
+            "agent_action": parsed["action"],
+            "search_terms": parsed["search_terms"],
+            "search_filters": parsed["filters"],
+            "user_intent": parsed["intent"],
+            "messages": [system_msg, human_msg]
+        }
 
     async def _search_messages(self, state: AgentState) -> AgentState:
         """Search for relevant messages using semantic search"""
@@ -138,35 +282,50 @@ class MessageAgent:
             conversation_id = state.get("conversation_id")
             sender_id = state.get("sender_id")
             action = state.get("agent_action", "search")
+            search_terms = state.get("search_terms", [])
+            search_filters = state.get("search_filters", {})
             
-            logger.info(f"Searching messages with action: {action}")
+            logger.info(f"Searching messages - Action: {action}, Terms: {search_terms}")
             
             if not SERVICES_AVAILABLE:
                 # Use mock data when services are not available
                 state["search_results"] = self._generate_mock_results(query, action)
                 return state
             
+            # Try to ensure ChromaDB is initialized
+            try:
+                if ensure_chromadb_initialized:
+                    await ensure_chromadb_initialized()
+            except Exception as e:
+                logger.warning(f"Failed to initialize ChromaDB: {e}")
+            
             if action == "recent":
                 # Get recent messages
                 try:
-                    messages = chromadb_service.get_recent_messages(
+                    messages = await chromadb_service.get_recent_messages(
                         conversation_id=conversation_id,
-                        limit=10
+                        limit=search_filters.get("limit", 10)
                     )
                     state["search_results"] = [msg.__dict__ for msg in messages] if messages else []
                 except Exception as e:
                     logger.warning(f"ChromaDB not available, using mock data: {e}")
                     state["search_results"] = self._generate_mock_results(query, action)
             else:
-                # Semantic search
+                # Semantic search using extracted search terms
                 try:
+                    # Use search_terms if available, otherwise fallback to original query
+                    search_query = " ".join(search_terms) if search_terms else query
+                    
                     messages = await message_service.search_messages(
-                        query_texts=query,
+                        query_texts=search_query,
                         conversation_id=conversation_id,
                         sender_id=sender_id,
-                        limit=10
+                        limit=search_filters.get("limit", 10)
                     )
                     state["search_results"] = [msg.__dict__ for msg in messages] if messages else []
+                    
+                    logger.info(f"Search query: '{search_query}' found {len(state.get('search_results', []))} results")
+                    
                 except Exception as e:
                     logger.warning(f"Search service not available, using mock data: {e}")
                     state["search_results"] = self._generate_mock_results(query, action)
@@ -248,12 +407,15 @@ class MessageAgent:
             state["error"] = f"Context retrieval failed: {str(e)}"
             return state
     
-    def _generate_response(self, state: AgentState) -> AgentState:
+    async def _generate_response(self, state: AgentState) -> AgentState:
         """Generate a response using the LLM"""
         try:
             query = state.get("query", "")
             context = state.get("context", "")
             conversation_id = state.get("conversation_id", "")
+            user_intent = state.get("user_intent", "")
+            action = state.get("agent_action", "search")
+            search_terms = state.get("search_terms", [])
             
             if not self.llm:
                 # Fallback response without LLM
@@ -261,19 +423,24 @@ class MessageAgent:
                 state["response"] = response
                 return state
             
-            # Create prompt template for Gemini
+            # Create enhanced prompt template for Gemini with intent awareness
             prompt = ChatPromptTemplate.from_messages([
                 ("human", """You are a helpful assistant that helps users find and understand messages from their conversation history.
+
+User Intent: {user_intent}
+Action Taken: {action}
+Search Terms Used: {search_terms}
 
 Context from conversation history:
 {context}
 
 Instructions:
-1. Use the provided context to answer the user's query
+1. Use the provided context to answer the user's query based on their intent
 2. Be concise and helpful
-3. If no relevant messages are found, say so clearly
+3. If no relevant messages are found, explain what was searched for and suggest alternatives
 4. Include specific details from the messages when relevant
 5. If asked about recent messages, summarize the latest activity
+6. Reference the search terms if they were important to the query
 
 Current conversation ID: {conversation_id}
 
@@ -283,12 +450,36 @@ User Query: {query}""")
             # Create chain
             chain = prompt | self.llm | StrOutputParser()
             
-            # Generate response
-            response = chain.invoke({
-                "query": query,
-                "context": context,
-                "conversation_id": conversation_id
-            })
+            # Generate response with rate limiting
+            if self.llm:
+                # Check rate limits before making API call
+                can_proceed = await gemini_rate_limiter.wait_and_record_request()
+                
+                if not can_proceed:
+                    logger.warning("Gemini daily quota exceeded, using fallback response")
+                    response = self._generate_fallback_response(state)
+                else:
+                    try:
+                        response = chain.invoke({
+                            "query": query,
+                            "context": context,
+                            "conversation_id": conversation_id,
+                            "user_intent": user_intent,
+                            "action": action,
+                            "search_terms": ", ".join(search_terms) if search_terms else "None"
+                        })
+                        logger.info("✅ Gemini API response generated successfully")
+                    except Exception as llm_error:
+                        # Check if it's a rate limit error
+                        error_str = str(llm_error).lower()
+                        if "rate_limit" in error_str or "quota" in error_str or "429" in error_str:
+                            logger.warning(f"⚠️ Rate limit hit despite precautions, falling back: {llm_error}")
+                            response = self._generate_fallback_response(state)
+                        else:
+                            # Re-raise other LLM errors
+                            raise llm_error
+            else:
+                response = self._generate_fallback_response(state)
             
             state["response"] = response
             
@@ -301,7 +492,15 @@ User Query: {query}""")
             
         except Exception as e:
             logger.error(f"Error generating response: {e}")
-            state["error"] = f"Response generation failed: {str(e)}"
+            # For any error, fall back to a basic response
+            fallback_response = self._generate_fallback_response(state)
+            state["response"] = fallback_response
+            
+            # Add fallback message to conversation
+            ai_msg = AIMessage(content=fallback_response)
+            state["messages"] = state.get("messages", []) + [ai_msg]
+            
+            logger.info("Used fallback response due to error")
             return state
     
     def _generate_fallback_response(self, state: AgentState) -> str:
@@ -357,16 +556,20 @@ User Query: {query}""")
             Dict containing the response and metadata
         """
         try:
-            # Initialize state
+            # Initialize state with new fields
             initial_state = AgentState(
                 messages=[],
                 query=query,
+                search_term=query,  # Legacy field for compatibility
                 conversation_id=conversation_id,
                 sender_id=sender_id,
                 search_results=None,
                 response=None,
                 context=None,
                 agent_action=None,
+                search_terms=None,  # Will be populated by LLM parsing
+                search_filters=None,  # Will be populated by LLM parsing  
+                user_intent=None,  # Will be populated by LLM parsing
                 error=None
             )
             
