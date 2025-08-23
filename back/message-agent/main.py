@@ -72,7 +72,7 @@ async def cleanup_services():
     if chromadb_service and hasattr(chromadb_service, 'close'):
         try:
             await chromadb_service.close()
-        except:
+        except Exception:
             pass
 
 

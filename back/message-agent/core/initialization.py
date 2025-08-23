@@ -6,7 +6,6 @@ when agents are used outside of the FastAPI application context.
 """
 
 import logging
-from typing import Optional
 from services.chromadb_service import chromadb_service
 
 logger = logging.getLogger(__name__)
