@@ -13,8 +13,7 @@ from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_openai import ChatOpenAI
-from langchain_core.runnables import RunnablePassthrough
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import StrOutputParser
 
 # Import services with fallback
@@ -49,17 +48,18 @@ class AgentState(TypedDict):
 class MessageAgent:
     """LangGraph-based message agent for handling conversation queries"""
     
-    def __init__(self, openai_api_key: Optional[str] = None):
+    def __init__(self, gemini_api_key: Optional[str] = None):
         """Initialize the message agent with LangGraph workflow"""
-        self.openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
-        if not self.openai_api_key:
-            logger.warning("No OpenAI API key provided. Agent will work with limited functionality.")
+        self.gemini_api_key = gemini_api_key or os.getenv("GOOGLE_API_KEY")
+        if not self.gemini_api_key:
+            logger.warning("No Gemini API key provided. Agent will work with limited functionality.")
             self.llm = None
         else:
-            self.llm = ChatOpenAI(
-                api_key=self.openai_api_key,
-                model="gpt-4o-mini",
-                temperature=0.1
+            self.llm = ChatGoogleGenerativeAI(
+                google_api_key=self.gemini_api_key,
+                model="gemini-1.5-flash",
+                temperature=0.1,
+                convert_system_message_to_human=True
             )
         
         self.workflow = self._build_workflow()
@@ -130,8 +130,8 @@ class MessageAgent:
             logger.error(f"Error parsing query: {e}")
             state["error"] = f"Query parsing failed: {str(e)}"
             return state
-    
-    def _search_messages(self, state: AgentState) -> AgentState:
+
+    async def _search_messages(self, state: AgentState) -> AgentState:
         """Search for relevant messages using semantic search"""
         try:
             query = state.get("query", "")
@@ -160,7 +160,7 @@ class MessageAgent:
             else:
                 # Semantic search
                 try:
-                    messages = message_service.search_messages(
+                    messages = await message_service.search_messages(
                         query_texts=query,
                         conversation_id=conversation_id,
                         sender_id=sender_id,
@@ -261,9 +261,9 @@ class MessageAgent:
                 state["response"] = response
                 return state
             
-            # Create prompt template
+            # Create prompt template for Gemini
             prompt = ChatPromptTemplate.from_messages([
-                ("system", """You are a helpful assistant that helps users find and understand messages from their conversation history.
+                ("human", """You are a helpful assistant that helps users find and understand messages from their conversation history.
 
 Context from conversation history:
 {context}
@@ -275,8 +275,9 @@ Instructions:
 4. Include specific details from the messages when relevant
 5. If asked about recent messages, summarize the latest activity
 
-Current conversation ID: {conversation_id}"""),
-                ("human", "{query}")
+Current conversation ID: {conversation_id}
+
+User Query: {query}""")
             ])
             
             # Create chain

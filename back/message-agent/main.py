@@ -6,25 +6,22 @@ when ChromaDB dependencies are not available.
 """
 
 import logging
-import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Optional
 
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 import uvicorn
 
 # Core imports
-from models.api import MessageResult
 from api.health import router as health_router
 from api.messages import router as messages_router
 from api.agent import router as agent_router
 
 # Global service instances
 chromadb_service = None
-service_mode = "mock"  # "chromadb" or "mock"
+service_mode = "chromadb"  # "chromadb" or "mock"
 start_time = datetime.now()
 
 logger = logging.getLogger(__name__)
@@ -39,12 +36,11 @@ except ImportError as e:
     logger.warning(f"ChromaDB dependencies not available: {e}")
     CHROMADB_AVAILABLE = False
     ChromaDBService = None
-    EmbeddingService = None
 
 
 async def initialize_services():
     """Initialize services with graceful fallback."""
-    global chromadb_service, embedding_service, service_mode
+    global chromadb_service, service_mode
     
     if not CHROMADB_AVAILABLE:
         logger.info("ChromaDB dependencies not installed, using mock mode")
@@ -60,10 +56,6 @@ async def initialize_services():
         
         if not success:
             raise Exception("ChromaDB initialization failed")
-            
-        # Try to initialize embedding service
-        embedding_service = EmbeddingService()
-        await embedding_service.initialize()
         
         logger.info("ChromaDB services initialized successfully")
         service_mode = "chromadb"
@@ -73,7 +65,6 @@ async def initialize_services():
         logger.info("Falling back to mock mode")
         service_mode = "mock"
         chromadb_service = None
-        embedding_service = None
 
 
 async def cleanup_services():
@@ -81,11 +72,6 @@ async def cleanup_services():
     if chromadb_service and hasattr(chromadb_service, 'close'):
         try:
             await chromadb_service.close()
-        except:
-            pass
-    if embedding_service and hasattr(embedding_service, 'cleanup'):
-        try:
-            await embedding_service.cleanup()
         except:
             pass
 
@@ -141,46 +127,6 @@ async def root():
         "chromadb_connected": service_mode == "chromadb",
         "uptime_seconds": uptime
     }
-
-
-# async def generate_mock_messages(
-#     conversation_id: Optional[str] = None,
-#     sender_id: Optional[str] = None,
-#     limit: int = 10,
-#     offset: int = 0
-# ) -> tuple[list[MessageResult], int]:
-#     """Generate mock messages for fallback mode."""
-    
-#     # Generate mock data
-#     messages = []
-#     total_messages = 50  # Mock total
-    
-#     for i in range(offset, min(offset + limit, total_messages)):
-#         # Apply filters
-#         if conversation_id:
-#             mock_conversation_id = conversation_id
-#         else:
-#             mock_conversation_id = f"conv-{i % 4}"
-        
-#         if sender_id:
-#             mock_sender_id = sender_id
-#         else:
-#             mock_sender_id = f"user-{i % 2}"
-        
-#         message = MessageResult(
-#             message_id=f"msg-{i}",
-#             conversation_id=mock_conversation_id,
-#             sender_id=mock_sender_id,
-#             content=f"Mock message content {i}",
-#             sent_at=datetime.now(),
-#             similarity_score=None
-#         )
-#         messages.append(message)
-    
-#     return messages, total_messages
-
-
-
 
 if __name__ == "__main__":
     uvicorn.run(

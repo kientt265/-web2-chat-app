@@ -5,6 +5,7 @@ Agent-based query endpoints using LangGraph
 from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from fastapi.responses import ORJSONResponse
 
 from managers.agent_manager import agent_manager
 from core.logging import get_logger
@@ -20,22 +21,8 @@ class AgentQueryRequest(BaseModel):
     sender_id: Optional[str] = None
     agent_type: str = "message_agent"
 
-
-class AgentQueryResponse(BaseModel):
-    """Response model for agent queries"""
-    response: str
-    search_results: list
-    message_count: int
-    conversation_id: Optional[str]
-    query: str
-    success: bool
-    error: Optional[str]
-    agent_type: str
-    timestamp: str
-
-
-@router.post("/query", response_model=AgentQueryResponse)
-async def query_agent(request: AgentQueryRequest) -> AgentQueryResponse:
+@router.post("/query", response_model=None)
+async def query_agent(request: AgentQueryRequest) -> ORJSONResponse:
     """
     Process a query using the LangGraph-based message agent
     
@@ -51,9 +38,21 @@ async def query_agent(request: AgentQueryRequest) -> AgentQueryResponse:
             sender_id=request.sender_id,
             agent_type=request.agent_type
         )
-        
-        return AgentQueryResponse(**result)
-        
+
+        return ORJSONResponse(
+            content={
+                "response": result.get("response"),
+                "search_results": result.get("search_results"),
+                "message_count": result.get("message_count"),
+                "conversation_id": result.get("conversation_id"),
+                "query": result.get("query"),
+                "success": result.get("success"),
+                "error": result.get("error"),
+                "agent_type": result.get("agent_type"),
+                "timestamp": result.get("timestamp")
+            }
+        )
+
     except Exception as e:
         logger.error(f"Error processing agent query: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -11,9 +11,10 @@ numpy==2.3.2
 # LangGraph and LangChain dependencies
 langgraph
 langchain
-langchain-openai
+langchain-google-genai
 langchain-core
 langchain-community
+google-generativeai
 
 anyio==4.10.0
 websockets==14.2
