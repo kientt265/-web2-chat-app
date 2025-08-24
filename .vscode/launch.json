@@ -34,5 +34,20 @@
             "envFile": "${workspaceFolder}/.env",
             "console": "integratedTerminal"
         },
+        {
+            "name": "FastAPI Tool Agent Debug",
+            "request": "launch",
+            "type": "debugpy",
+            "module": "uvicorn",
+            "cwd": "${workspaceFolder}/back/tool-agent",
+            "args": [
+                "main:app",
+                "--host", "0.0.0.0",
+                "--port", "3004",
+                "--reload"
+            ],
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal"
+        },
     ]
 }

@@ -11,7 +11,7 @@ import logging
 from typing import List, Dict, Any, Optional
 import httpx
 from langchain.tools import Tool, StructuredTool
-from langchain_core.pydantic_v1 import BaseModel, Field
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 

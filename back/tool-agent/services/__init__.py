@@ -1,15 +1,9 @@
 """Services package initialization."""
 
-from .discovery import (
-    ServiceDiscoveryClient,
-    DynamicToolLoader,
-    get_service_discovery_client,
-    get_dynamic_tool_loader,
-)
+from .http_mcp_client import get_http_mcp_client
+from .http_mcp_tool_adapter import HTTPMCPToolAdapter
 
 __all__ = [
-    "ServiceDiscoveryClient",
-    "DynamicToolLoader",
-    "get_service_discovery_client",
-    "get_dynamic_tool_loader",
+    "get_http_mcp_client",
+    "HTTPMCPToolAdapter",
 ]
