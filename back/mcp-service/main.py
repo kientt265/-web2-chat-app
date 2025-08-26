@@ -168,11 +168,12 @@ async def call_tool(server_name: str, tool_name: str, arguments: Dict[str, Any] 
         
         async with httpx.AsyncClient(timeout=60.0) as client:
             # Make request to ext-tool service
-            if tool_name in ["calculate", "calculate_statistics"]:
-                # POST request for calculator tools
+            # Different tools use different HTTP methods
+            if server_name == "calculator" or (server_name == "webscraper" and tool_name == "scrape_webpage"):
+                # POST request for calculator tools and scrape_webpage
                 response = await client.post(f"{ext_tool_url}{endpoint}", json=arguments)
             else:
-                # GET request for other tools
+                # GET request for other tools like extract_text
                 response = await client.get(f"{ext_tool_url}{endpoint}", params=arguments)
             
             response.raise_for_status()

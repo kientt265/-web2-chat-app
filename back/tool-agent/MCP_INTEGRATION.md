@@ -82,20 +82,6 @@ MCP servers are configured in `config/mcp_servers.json`:
       },
       "url": null
     },
-    {
-      "name": "filesystem",
-      "command": ["npx", "@modelcontextprotocol/server-filesystem"],
-      "args": ["/tmp"],
-      "env": {},
-      "url": null
-    },
-    {
-      "name": "git",
-      "command": ["npx", "@modelcontextprotocol/server-git"],
-      "args": ["--repository", "."],
-      "env": {},
-      "url": null
-    }
   ]
 }
 ```
