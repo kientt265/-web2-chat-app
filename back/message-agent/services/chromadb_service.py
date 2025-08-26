@@ -35,7 +35,9 @@ class ChromaDBService:
             # Get existing collection
             try:
                 self.collection = self.client.get_collection(name=self.collection_name)
-                logger.info(f"✅ Connected to existing collection: {self.collection_name}")
+                logger.info(
+                    f"✅ Connected to existing collection: {self.collection_name}"
+                )
             except Exception as e:
                 logger.warning(f"Collection {self.collection_name} not found: {e}")
                 self.collection = self.client.get_or_create_collection(
@@ -73,7 +75,7 @@ class ChromaDBService:
                 where_clause = {
                     "$and": [
                         {"conversation_id": {"$eq": conversation_id}},
-                        {"sender_id": {"$eq": sender_id}}
+                        {"sender_id": {"$eq": sender_id}},
                     ]
                 }
             elif conversation_id:
@@ -91,17 +93,21 @@ class ChromaDBService:
             messages = []
             if results["ids"]:
                 # Sort by sent_at (assuming metadata contains sent_at)
-                indexed_results = list(zip(
-                    results["ids"],
-                    results["metadatas"] or [],
-                    results["documents"] or []
-                ))
-                
+                indexed_results = list(
+                    zip(
+                        results["ids"],
+                        results["metadatas"] or [],
+                        results["documents"] or [],
+                    )
+                )
+
                 # Sort by sent_at descending
                 try:
                     indexed_results.sort(
-                        key=lambda x: datetime.fromisoformat(x[1].get("sent_at", "1970-01-01")),
-                        reverse=True
+                        key=lambda x: datetime.fromisoformat(
+                            x[1].get("sent_at", "1970-01-01")
+                        ),
+                        reverse=True,
                     )
                 except Exception as e:
                     logger.warning(f"Could not sort by sent_at: {e}")
@@ -118,7 +124,9 @@ class ChromaDBService:
                             conversation_id=metadata.get("conversation_id", ""),
                             sender_id=metadata.get("sender_id", ""),
                             content=content,
-                            sent_at=datetime.fromisoformat(metadata.get("sent_at", datetime.now().isoformat())),
+                            sent_at=datetime.fromisoformat(
+                                metadata.get("sent_at", datetime.now().isoformat())
+                            ),
                         )
                         messages.append(message)
                     except Exception as e:
@@ -143,7 +151,6 @@ class ChromaDBService:
             raise RuntimeError("ChromaDB not initialized")
 
         try:
-
             # Build where clause with proper ChromaDB syntax
             where_clause = None
             if conversation_id and sender_id:
@@ -151,7 +158,7 @@ class ChromaDBService:
                 where_clause = {
                     "$and": [
                         {"conversation_id": {"$eq": conversation_id}},
-                        {"sender_id": {"$eq": sender_id}}
+                        {"sender_id": {"$eq": sender_id}},
                     ]
                 }
             elif conversation_id:
@@ -184,7 +191,9 @@ class ChromaDBService:
                         conversation_id=metadata.get("conversation_id", ""),
                         sender_id=metadata.get("sender_id", ""),
                         content=content,
-                        sent_at=datetime.fromisoformat(metadata.get("sent_at", datetime.now().isoformat())),
+                        sent_at=datetime.fromisoformat(
+                            metadata.get("sent_at", datetime.now().isoformat())
+                        ),
                         similarity_score=similarity_score,
                     )
                     messages.append(message)
@@ -202,9 +211,7 @@ class ChromaDBService:
     ) -> List[MessageResult]:
         """Get most recent messages"""
         return await self.get_messages(
-            conversation_id=conversation_id,
-            limit=limit,
-            offset=0
+            conversation_id=conversation_id, limit=limit, offset=0
         )
 
     async def get_stats(self) -> Dict[str, Any]:

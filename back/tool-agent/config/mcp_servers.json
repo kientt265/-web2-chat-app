@@ -1,0 +1,18 @@
+{
+  "servers": [
+    {
+      "name": "calculator",
+      "command": null,
+      "args": null,
+      "env": null,
+      "url": "http://mcp-service:3005/servers/calculator/tools"
+    },
+    {
+      "name": "webscraper",
+      "command": null,
+      "args": null,
+      "env": null,
+      "url": "http://mcp-service:3005/servers/webscraper/tools"
+    }
+  ]
+}

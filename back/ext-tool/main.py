@@ -119,7 +119,7 @@ async def root():
             "/tools/scraper",
             "/tools/calculator",
         ],
-    }   
+    }
 
 
 @app.get("/health")

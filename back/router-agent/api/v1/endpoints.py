@@ -205,14 +205,14 @@ async def direct_agent_call(agent_type: str, query: RouterQuery) -> RouterRespon
 async def websocket_endpoint(websocket: WebSocket):
     """
     WebSocket endpoint for real-time agent communication.
-    
+
     Supports the following message types:
     - ping: Health check (responds with pong)
     - query: Route and process a query
     - analyze: Analyze query without processing
     - status: Get router status
     - direct: Direct call to specific agent
-    
+
     Message format:
     {
         "type": "query|analyze|status|direct|ping",
@@ -223,15 +223,15 @@ async def websocket_endpoint(websocket: WebSocket):
     """
     client_host = websocket.client.host if websocket.client else None
     connection_id = await websocket_manager.connect(websocket, client_host)
-    
+
     try:
         while True:
             # Receive message
             data = await websocket.receive_text()
-            
+
             # Handle message
             await websocket_manager.handle_message(connection_id, data)
-            
+
     except WebSocketDisconnect:
         websocket_manager.disconnect(connection_id)
     except Exception as e:
@@ -245,4 +245,6 @@ async def websocket_stats() -> Dict:
     try:
         return websocket_manager.get_connection_stats()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get WebSocket stats: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get WebSocket stats: {str(e)}"
+        )

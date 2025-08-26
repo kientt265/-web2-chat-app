@@ -28,6 +28,7 @@ class AgentType(Enum):
     MESSAGE_HISTORY_AGENT = "message-history-agent"
     GENERAL_AGENT = "general-agent"
 
+
 class State(TypedDict):
     input: str
     decision: str
@@ -48,8 +49,7 @@ class RouterManager:
         if config.is_llm_available():
             try:
                 self.model = ChatGoogleGenerativeAI(
-                    model="gemini-2.5-flash",
-                    temperature=0.1
+                    model="gemini-2.5-flash", temperature=0.1
                 )
                 print("✅ Router LLM initialized successfully")
             except Exception as e:

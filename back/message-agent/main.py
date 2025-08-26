@@ -30,6 +30,7 @@ logging.basicConfig(level=logging.INFO)
 # Try to import ChromaDB services, but don't fail if they're not available
 try:
     from services.chromadb_service import ChromaDBService
+
     CHROMADB_AVAILABLE = True
     logger.info("ChromaDB dependencies are available")
 except ImportError as e:
@@ -41,25 +42,25 @@ except ImportError as e:
 async def initialize_services():
     """Initialize services with graceful fallback."""
     global chromadb_service, service_mode
-    
+
     if not CHROMADB_AVAILABLE:
         logger.info("ChromaDB dependencies not installed, using mock mode")
         service_mode = "mock"
         return
-    
+
     try:
         logger.info("Attempting to initialize ChromaDB services...")
-        
+
         # Try to initialize ChromaDB service
         chromadb_service = ChromaDBService()
         success = await chromadb_service.initialize()
-        
+
         if not success:
             raise Exception("ChromaDB initialization failed")
-        
+
         logger.info("ChromaDB services initialized successfully")
         service_mode = "chromadb"
-        
+
     except Exception as e:
         logger.warning(f"Failed to initialize ChromaDB services: {e}")
         logger.info("Falling back to mock mode")
@@ -69,7 +70,7 @@ async def initialize_services():
 
 async def cleanup_services():
     """Cleanup services on shutdown."""
-    if chromadb_service and hasattr(chromadb_service, 'close'):
+    if chromadb_service and hasattr(chromadb_service, "close"):
         try:
             await chromadb_service.close()
         except Exception:
@@ -82,9 +83,9 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Message Agent Service")
     await initialize_services()
     logger.info(f"Service started in {service_mode} mode")
-    
+
     yield
-    
+
     logger.info("Shutting down Message Agent Service")
     await cleanup_services()
 
@@ -94,7 +95,7 @@ app = FastAPI(
     title="Message Agent Service",
     description="Message retrieval service with ChromaDB integration and mock fallback",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Configure CORS
@@ -117,7 +118,7 @@ async def root():
     """Root endpoint with service information."""
     global start_time
     uptime = (datetime.now() - start_time).total_seconds()
-    
+
     return {
         "message": "Welcome to the Message Agent Service. See /docs for Swagger UI.",
         "version": "1.0.0",
@@ -125,14 +126,9 @@ async def root():
         "mode": service_mode,
         "chromadb_available": CHROMADB_AVAILABLE,
         "chromadb_connected": service_mode == "chromadb",
-        "uptime_seconds": uptime
+        "uptime_seconds": uptime,
     }
 
+
 if __name__ == "__main__":
-    uvicorn.run(
-        "main:app",
-        host="0.0.0.0",
-        port=3008,
-        reload=True,
-        log_level="info"
-    )
+    uvicorn.run("main:app", host="0.0.0.0", port=3008, reload=True, log_level="info")

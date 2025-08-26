@@ -10,3 +10,4 @@ langchain-google-vertexai
 ruff
 httpx
 aiofiles
+mcp

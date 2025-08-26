@@ -3,9 +3,9 @@ Agent Manager module for managing AI agent lifecycle and interactions.
 
 This module provides the AgentManager class which handles the creation,
 management, and message processing for AI agents using LangChain and LangGraph.
+All tools are now loaded via MCP (Model Context Protocol) servers.
 """
 
-import asyncio
 from typing import Dict
 
 from dotenv import load_dotenv
@@ -13,7 +13,8 @@ from langchain.chat_models import init_chat_model
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 
-from services import get_dynamic_tool_loader
+from services import get_http_mcp_client
+from services.http_mcp_tool_adapter import HTTPMCPToolAdapter
 
 # Load environment variables
 load_dotenv()
@@ -26,13 +27,15 @@ class AgentManager:
 
     def __init__(self):
         """
-        Initializes the AgentManager with dynamic tool loading.
+        Initializes the AgentManager with MCP tool loading only.
         """
         self.static_tools = []
-        self.dynamic_tools = []
+        self.mcp_tools = []
         self.model = None
         self.agents: Dict[str, CompiledStateGraph] = {}
-        self.tool_loader = get_dynamic_tool_loader()
+        self.http_mcp_client = get_http_mcp_client()
+        self.tool_adapter = HTTPMCPToolAdapter(self.http_mcp_client)
+        self._tools_loaded = False
 
         # Try to initialize the model, but continue without it if credentials are missing
         try:
@@ -41,23 +44,33 @@ class AgentManager:
             print(f"Warning: Could not initialize Google Gemini model: {e}")
             print("Agent will continue without LLM capabilities")
 
-        # Load tools asynchronously
-        asyncio.create_task(self._load_dynamic_tools())
+        # Tools will be loaded lazily when first needed
 
-    async def _load_dynamic_tools(self):
-        """Load dynamic tools from service registry."""
+    async def _load_all_tools(self):
+        """Load all MCP tools."""
+        if not self._tools_loaded:
+            await self._load_mcp_tools()
+            self._tools_loaded = True
+
+    async def _load_mcp_tools(self):
+        """Load tools from HTTP MCP service."""
         try:
-            self.dynamic_tools = await self.tool_loader.load_tools()
-            print(f"Loaded {len(self.dynamic_tools)} dynamic tools")
+            self.mcp_tools = await self.tool_adapter.load_tools()
+            print(f"Loaded {len(self.mcp_tools)} HTTP MCP tools")
         except Exception as e:
-            print(f"Failed to load dynamic tools: {e}")
-            self.dynamic_tools = []
+            print(f"Failed to load HTTP MCP tools: {e}")
+            self.mcp_tools = []
 
     def _get_all_tools(self) -> list:
-        """Get all available tools (static + dynamic)."""
-        return self.static_tools + self.dynamic_tools
+        """Get all available tools (static + MCP)."""
+        return self.static_tools + self.mcp_tools
 
-    def _create_agent(self, session_id: str) -> CompiledStateGraph:
+    async def _ensure_tools_loaded(self):
+        """Ensure tools are loaded before using them."""
+        if not self._tools_loaded:
+            await self._load_all_tools()
+
+    async def _create_agent(self, session_id: str) -> CompiledStateGraph:
         """Creates a new agent for the given session ID.
         :param session_id: Unique identifier for the session.
         :return: An instance of CompiledStateGraph.
@@ -68,6 +81,9 @@ class AgentManager:
         if self.model is None:
             raise ValueError("Cannot create agent: Language model is not available")
 
+        # Ensure tools are loaded
+        await self._ensure_tools_loaded()
+
         all_tools = self._get_all_tools()
         agent = create_react_agent(
             tools=all_tools,
@@ -76,15 +92,15 @@ class AgentManager:
         self.agents[session_id] = agent
         return self.agents[session_id]
 
-    def _get_or_create_agent(self, session_id: str) -> CompiledStateGraph:
+    async def _get_or_create_agent(self, session_id: str) -> CompiledStateGraph:
         """Retrieves an existing agent or creates a new one if it doesn't exist.
         :param session_id: Unique identifier for the session.
         """
         if session_id not in self.agents:
-            return self._create_agent(session_id)
+            return await self._create_agent(session_id)
         return self.agents[session_id]
 
-    def process_message(self, session_id: str, user_input: str) -> str:
+    async def process_message(self, session_id: str, user_input: str) -> str:
         """Processes a user input message through the agent for the given session ID.
         :param session_id: Unique identifier for the session.
         :param user_input: The input message from the user.
@@ -93,7 +109,7 @@ class AgentManager:
         if self.model is None:
             return "Error: Language model is not available. Please configure proper credentials."
 
-        agent = self._get_or_create_agent(session_id)
+        agent = await self._get_or_create_agent(session_id)
         response = agent.invoke({"messages": [{"role": "user", "content": user_input}]})
 
         # Extract the final message content from LangGraph response
@@ -128,23 +144,25 @@ class AgentManager:
         return len(self.agents)
 
     async def refresh_tools(self):
-        """Refresh the dynamic tools from service registry."""
+        """Refresh HTTP MCP tools."""
         try:
-            self.dynamic_tools = await self.tool_loader.refresh_tools()
-            print(f"Refreshed {len(self.dynamic_tools)} dynamic tools")
+            # Refresh HTTP MCP tools
+            self.mcp_tools = await self.tool_adapter.refresh_tools()
+            print(f"Refreshed {len(self.mcp_tools)} HTTP MCP tools")
 
             # Recreate all agents with new tools
             old_agents = self.agents.copy()
             self.agents.clear()
 
             for session_id in old_agents.keys():
-                self._create_agent(session_id)
+                await self._create_agent(session_id)
 
         except Exception as e:
             print(f"Failed to refresh tools: {e}")
 
-    def get_available_tools(self) -> list:
+    async def get_available_tools(self) -> list:
         """Get list of all available tools."""
+        await self._ensure_tools_loaded()
         all_tools = self._get_all_tools()
         return [
             {"name": tool.name, "description": tool.description} for tool in all_tools

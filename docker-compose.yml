@@ -38,6 +38,28 @@ services:
     networks:
       - app-network
 
+  mcp-service:
+    build:
+      context: ./back/mcp-service
+      dockerfile: Dockerfile
+    env_file: .env
+    ports:
+      - "3005:3005"
+    environment:
+      - MCP_SERVICE_HOST=0.0.0.0
+      - MCP_SERVICE_PORT=3005
+      - EXT_TOOL_SERVICE_URL=http://ext-tool:3006
+      - SERVICE_REGISTRY_URL=http://service-registry:3003
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+    depends_on:
+      - ext-tool
+      - service-registry
+    volumes:
+      - ./back/mcp-service:/app
+    networks:
+      - app-network
+
   service-registry:
     build:
       context: ./back/service-registry
@@ -66,10 +88,10 @@ services:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - TOOL_AGENT_PORT=3004
       - TOOL_AGENT_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@auth-db:5432/auth_db?schema=public
-      - SERVICE_REGISTRY_URL=http://service-registry:3003
+      - MCP_SERVICE_URL=http://mcp-service:3005
     depends_on:
       - auth-db
-      - service-registry
+      - mcp-service
     volumes:
       - ./back/tool-agent:/app
     networks:
@@ -85,7 +107,7 @@ services:
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - ROUTER_AGENT_PORT=3007
       - TOOL_AGENT_URL=http://tool-agent:3004
-      - HISTORY_AGENT_URL=http://sync-service:3005
+      - HISTORY_AGENT_URL=http://sync-service:3008
     depends_on:
       - tool-agent
       - sync-service
@@ -179,9 +201,9 @@ services:
       dockerfile: Dockerfile
     env_file: .env
     ports:
-      - "3005:3005"
+      - "3008:3008"
     environment:
-      - SYNC_PORT=3005
+      - SYNC_PORT=3008
       - SYNC_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@chat-db:5432/chat_db?schema=public
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - CHROMADB_HOST=chromadb
@@ -201,9 +223,9 @@ services:
       context: ./back/message-agent
       dockerfile: Dockerfile
     ports:
-      - "3008:3008"
+      - "3009:3009"
     environment:
-      - MESSAGE_AGENT_PORT=3008
+      - MESSAGE_AGENT_PORT=3009
       - CHROMADB_HOST=chromadb
       - CHROMADB_PORT=8000
       - LOG_LEVEL=INFO
