@@ -21,6 +21,7 @@ from services import get_registration_client
 # Import tool routers
 from tools.web_scraper.api import router as scraper_router
 from tools.calculator.api import router as calc_router
+from tools.tavily.api import router as tavily_router
 
 # Setup logging
 setup_logging()
@@ -105,6 +106,7 @@ app.add_middleware(
 # Include tool routers
 app.include_router(scraper_router, prefix="/tools/scraper", tags=["Web Scraper"])
 app.include_router(calc_router, prefix="/tools/calculator", tags=["Calculator"])
+app.include_router(tavily_router, prefix="/tools/tavily", tags=["Tavily"])
 
 
 @app.get("/")
