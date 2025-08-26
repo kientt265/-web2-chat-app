@@ -19,7 +19,7 @@ export function generateConversationKey() {
   const keyPair = ecdh.genKeyPair();
   const priv = keyPair.getPrivate("hex");
   const pub = keyPair.getPublic("hex");
-  return {priv, pub};
+  return { priv, pub };
 }
 
 export function saveKeyLocalStorage(convId: string, priv: string, pub: string) {
@@ -49,4 +49,109 @@ export function deriveSecret(convId: string, otherPubHex: string) {
 
   const secret = myKey.derive(otherKey.getPublic()).toString(16);
   return secret;
+}
+function hexToUint8Array(hexString: string): Uint8Array {
+  if (hexString.length % 2 !== 0) {
+    throw new Error("Invalid hex string");
+  }
+  const array = new Uint8Array(hexString.length / 2);
+  for (let i = 0; i < hexString.length; i += 2) {
+    array[i / 2] = parseInt(hexString.substr(i, 2), 16);
+  }
+  return array;
+}
+
+
+export const encryptMessage = async (conversationId: string, otherPubHex: string, message: string) => {
+  try {
+    const shareKeyString = deriveSecret(conversationId, otherPubHex);
+    if (shareKeyString) {
+      const shareKey = hexToUint8Array(shareKeyString);
+
+      if (!shareKey) return message;
+
+      // Chuyển đổi tin nhắn thành dạng binary
+      const encoder = new TextEncoder();
+      const messageBytes = encoder.encode(message);
+
+      // Tạo initialization vector (IV)
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+
+      // Import shareKey để sử dụng với AES-GCM
+      const key = await window.crypto.subtle.importKey(
+        'raw',
+        shareKey,
+        { name: 'AES-GCM' },
+        false,
+        ['encrypt']
+      );
+
+      // Mã hóa tin nhắn
+      const encryptedData = await window.crypto.subtle.encrypt(
+        {
+          name: 'AES-GCM',
+          iv: iv
+        },
+        key,
+        messageBytes
+      );
+
+      // Kết hợp IV và dữ liệu đã mã hóa
+      const encryptedArray = new Uint8Array(iv.length + encryptedData.byteLength);
+      encryptedArray.set(iv);
+      encryptedArray.set(new Uint8Array(encryptedData), iv.length);
+
+      // Chuyển đổi thành chuỗi Base64 để truyền đi
+      return btoa(String.fromCharCode(...encryptedArray));
+    }
+  } catch (error) {
+    console.error('Failed to encrypt message:', error);
+    return message;
+  }
+}
+
+ export const  decryptMessage = async (conversationId: string, otherPubHex: string, encryptedMessage: string) => {
+  try {
+    const shareKeyString = deriveSecret(conversationId, otherPubHex);
+    if (shareKeyString) {
+
+      const shareKey = hexToUint8Array(shareKeyString);
+      if (!shareKey) return encryptedMessage;
+
+      // Chuyển đổi từ Base64 về dạng binary
+      const encryptedArray = new Uint8Array(
+        atob(encryptedMessage).split('').map(char => char.charCodeAt(0))
+      );
+
+      // Tách IV và dữ liệu đã mã hóa
+      const iv = encryptedArray.slice(0, 12);
+      const encryptedData = encryptedArray.slice(12);
+
+      // Import shareKey
+      const key = await window.crypto.subtle.importKey(
+        'raw',
+        shareKey,
+        { name: 'AES-GCM' },
+        false,
+        ['decrypt']
+      );
+
+      // Giải mã tin nhắn
+      const decryptedData = await window.crypto.subtle.decrypt(
+        {
+          name: 'AES-GCM',
+          iv: iv
+        },
+        key,
+        encryptedData
+      );
+
+      // Chuyển đổi kết quả về dạng text
+      const decoder = new TextDecoder();
+      return decoder.decode(decryptedData);
+    }
+  } catch (error) {
+    console.error('Failed to decrypt message:', error);
+    return encryptedMessage;
+  }
 }
