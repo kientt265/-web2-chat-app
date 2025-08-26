@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getMessages, createConversation, sendMessage, getAllConversations, acceptSecretConversation } from '../controllers/chatController';
+import { getMessages, createConversation, sendMessage, leavingConversations, getAllConversations, acceptSecretConversation } from '../controllers/chatController';
 import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
@@ -11,5 +11,5 @@ router.post('/conversation', createConversation);
 router.post('/messages', sendMessage);
 router.get('/conversations', getAllConversations);
 router.patch('/conversations/:conversation_id/accept', acceptSecretConversation);
-
+router.delete('conversations', leavingConversations);
 export default router;

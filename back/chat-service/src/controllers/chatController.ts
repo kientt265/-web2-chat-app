@@ -30,7 +30,7 @@ export const getMessages = async (req: Request, res: Response) => {
 export const createConversation = async (req: Request, res: Response) => {
   const { type, name, user_ids, subtype, pubkey } = req.body as {
     type: 'private' | 'group';
-    name?: string;
+    name?: string | null;
     user_ids: UserMember[];
     subtype?: 'normal' | 'secret';
     pubkey?: string;
@@ -60,7 +60,7 @@ export const createConversation = async (req: Request, res: Response) => {
     const conversation = await prisma.conversations.create({
       data: {
         type,
-        name,
+        name: type === 'group' ? name : null,
         subtype: type === 'private' ? subtype : null,
         members: {
           create: user_ids.map(({ user_id, pubkey }) => ({
@@ -205,6 +205,7 @@ export const getAllConversations = async (req: Request, res: Response) => {
     const formattedConversations = conversations.map(conv => ({
       conversation_id: conv.conversation_id,
       type: conv.type,
+      subtype: conv.subtype,
       name: conv.name,
       created_at: conv.created_at,
       member_count: conv.members.length,
@@ -218,3 +219,39 @@ export const getAllConversations = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch conversations' });
   }
 };
+
+export const leavingConversations = async (req: Request, res: Response) => {
+  try {
+    const {conversation_id} = req.body;
+    if (!req.user?.user_id) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
+
+    const user_id = req.user.user_id;
+    const member = await prisma.conversation_members.findUnique({
+      where: {
+        conversation_id_user_id: {
+          conversation_id,
+          user_id: user_id,
+        },
+      },
+    });
+
+    if (!member) {
+      return res.status(404).json({ error: 'Member not found in this conversation' });
+    }
+    await prisma.conversation_members.delete({
+      where: {
+        conversation_id_user_id: {
+          conversation_id,
+          user_id: user_id,
+        },
+      },
+    });
+
+    return res.status(200).json({ message: 'Member removed successfully' });
+  } catch (error) {
+    console.error('Error removing member from conversation:', error);
+    return res.status(500).json({ error: 'Failed to remove member' });
+  }
+}
