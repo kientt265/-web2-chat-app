@@ -1,9 +1,9 @@
-import React, { act, useState } from 'react';
+import React from 'react';
 import type { Conversation, Message } from '../../types/index';
 import { chatService } from '../../services/api';
-import { generateConversationKey, saveKeyLocalStorage, deriveSecret } from '../components/HelperSecretChat'
+import {generateConversationKey, saveKeyLocalStorage, getConversationKey, deriveSecret} from '../components/HelperSecretChat'
 interface ChatAreaProps {
-  activeConversation: Conversation;
+  activeConversation: Conversation | null;
   messages: Message[];
   userId: string | undefined;
   content: string;
@@ -19,51 +19,21 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   setContent,
   sendMessage,
 }) => {
-  const ortherPubkey = activeConversation.members.find((member) => member.user_id !== userId)?.pubkey;
-  const [key, setKey] = useState<{ pubkey: string, privkey: string }>({
-    pubkey: activeConversation.members.find((member) => member.user_id === userId)?.pubkey || "",
-    privkey: ""
-  });
 
-  const computeShareKey = () => {
-    if (activeConversation.subtype === 'secret') {
-      if(ortherPubkey) {
-        return deriveSecret(activeConversation.conversation_id, ortherPubkey);
-      }
-    }
-  }
   const callAcceptSecretConversation = async () => {
     try {
       const res = generateConversationKey();
-      const respone = await chatService.acceptSecretChat({ conversationId: activeConversation ? activeConversation.conversation_id : '', pubkey: res.pub });
-      setKey({ pubkey: res.pub, privkey: res.priv });
-      saveKeyLocalStorage(activeConversation.conversation_id, res.priv, res.pub);
+      const respone = await chatService.acceptSecretChat({conversationId: activeConversation ? activeConversation.conversation_id : '', pubkey: res.pub});
       console.log(respone);
     } catch (error) {
       console.log('Failed to accept secret conservation!!!', error);
     }
   }
-
   const callRejectSecretConversation = async () => {
     try {
-      const respone = await chatService.leavingSecretChat(activeConversation ? activeConversation.conversation_id : '');
+      const respone = await chatService.leavingSecretChat( activeConversation ? activeConversation.conversation_id : '');
       console.log('Reject join secret conservation', respone);
     } catch (error) {
-      console.log('Failed to accept secret conservation!!!', error);
-    }
-  }
-
-  const ecryptMessage = async () => {
-    try {
-      const shareKey = computeShareKey();
-      
-    } catch (error) {
-      console.log('Failed to accept secret conservation!!!', error);
-    }
-  }
-
-  const decryptMessage = async () => {
-    try { } catch (error) {
       console.log('Failed to accept secret conservation!!!', error);
     }
   }
@@ -78,6 +48,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               <p className="text-sm text-gray-500">
                 {activeConversation.member_count} members
               </p>
+              {/* //TODO: Cần handle kiểm tra thêm pubkey có null không nữa */}
               {(activeConversation.subtype === "secret" && activeConversation.members.find(member => member.user_id === userId)?.pubkey === null) ? (
                 <div className="flex items-center gap-2 text-sm text-gray-700">
                   <span>Có người muốn tạo cuộc trò chuyện bí mật với bạn</span>
@@ -129,7 +100,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 placeholder="Type a message"
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
               />
-              //TODO
               <button
                 className="bg-blue-500 text-white px-4 py-2 rounded-lg"
                 onClick={sendMessage}

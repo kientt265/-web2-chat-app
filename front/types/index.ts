@@ -21,6 +21,7 @@ export interface ConversationMember {
     conversation_id: string;
     user_id: string;
     joined_at: string;
+    pubkey: string;
 }
 
 export interface Conversation {

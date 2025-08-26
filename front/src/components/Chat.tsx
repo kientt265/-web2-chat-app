@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import { chatService } from '../../services/api';
-import type { Conversation} from '../../types/index';
+import type { Conversation } from '../../types/index';
 import type { Message } from '../../types/index';
 import ChatSidebar from './ChatSidebar';
 import ChatArea from './ChatArea';
@@ -24,6 +24,7 @@ function Chat() {
       try {
         const data = await chatService.getAllConversations();
         console.log(data);
+        console.log(userId);
         setConversations(data);
       } catch (error) {
         console.error('Failed to fetch conversations:', error);
@@ -122,14 +123,16 @@ function Chat() {
         handleConversationClick={handleConversationClick}
         setShowForm={setShowForm}
       />
-      <ChatArea
-        activeConversation={activeConversation}
-        messages={messages}
-        userId={userId}
-        content={content}
-        setContent={setContent}
-        sendMessage={sendMessage}
-      />
+      {activeConversation && (
+        <ChatArea
+          activeConversation={activeConversation}
+          messages={messages}
+          userId={userId}
+          content={content}
+          setContent={setContent}
+          sendMessage={sendMessage}
+        />
+      )}
     </div>
   );
 }
