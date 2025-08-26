@@ -23,6 +23,7 @@ function Chat() {
     const fetchConversations = async () => {
       try {
         const data = await chatService.getAllConversations();
+        console.log(data);
         setConversations(data);
       } catch (error) {
         console.error('Failed to fetch conversations:', error);

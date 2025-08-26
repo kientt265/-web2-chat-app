@@ -26,9 +26,14 @@ export interface ConversationMember {
 export interface Conversation {
     conversation_id: string;
     type: 'group' | 'private';
+    subtype: 'normal' | 'secret';
     name: string;
     created_at: string;
     member_count: number;
     members: ConversationMember[];
     last_message: Message | null;
 }
+export interface UserMember {
+    user_id: string;
+    pubkey: string | null;
+  };
