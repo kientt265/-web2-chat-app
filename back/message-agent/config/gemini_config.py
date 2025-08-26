@@ -8,18 +8,14 @@ Adjust these values based on your API quota and usage patterns.
 GEMINI_RATE_LIMITS = {
     # Requests per minute - keep this lower than your actual quota
     "requests_per_minute": 8,  # Gemini free tier allows 15/min, so we use 8 for safety
-    
     # Daily request limit
     "requests_per_day": 1000,  # Adjust based on your quota
-    
     # Token limits (if applicable)
     "tokens_per_minute": 100000,
-    
     # Retry configuration
     "max_retries": 3,
     "base_delay": 2.0,  # seconds
     "max_delay": 60.0,  # seconds
-    
     # Timeout settings
     "request_timeout": 30.0,  # seconds
 }

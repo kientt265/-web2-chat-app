@@ -6,7 +6,6 @@ management, and message processing for AI agents using LangChain and LangGraph.
 All tools are now loaded via MCP (Model Context Protocol) servers.
 """
 
-import asyncio
 from typing import Dict
 
 from dotenv import load_dotenv
@@ -84,7 +83,7 @@ class AgentManager:
 
         # Ensure tools are loaded
         await self._ensure_tools_loaded()
-        
+
         all_tools = self._get_all_tools()
         agent = create_react_agent(
             tools=all_tools,

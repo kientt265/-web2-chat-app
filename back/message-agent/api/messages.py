@@ -21,7 +21,9 @@ logger = get_logger(__name__)
 
 @router.get("/", response_model=None)
 async def get_messages(
-    conversation_id: Optional[str] = Query(None, description="Filter by conversation ID"),
+    conversation_id: Optional[str] = Query(
+        None, description="Filter by conversation ID"
+    ),
     sender_id: Optional[str] = Query(None, description="Filter by sender ID"),
     limit: int = Query(10, ge=1, le=100, description="Number of messages to retrieve"),
     offset: int = Query(0, ge=0, description="Number of messages to skip"),
@@ -86,8 +88,12 @@ async def search_messages(request: SemanticSearchRequest) -> ORJSONResponse:
 
 @router.get("/recent", response_model=None)
 async def get_recent_messages(
-    conversation_id: Optional[str] = Query(None, description="Filter by conversation ID"),
-    limit: int = Query(10, ge=1, le=100, description="Number of recent messages to retrieve"),
+    conversation_id: Optional[str] = Query(
+        None, description="Filter by conversation ID"
+    ),
+    limit: int = Query(
+        10, ge=1, le=100, description="Number of recent messages to retrieve"
+    ),
 ) -> ORJSONResponse:
     """Get most recent messages"""
     start_time = time.time()

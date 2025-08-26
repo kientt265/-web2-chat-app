@@ -18,6 +18,7 @@ service_start_time = datetime.now()
 # Try to import ChromaDB service, but don't fail if not available
 try:
     from services.chromadb_service import chromadb_service
+
     CHROMADB_SERVICE_AVAILABLE = True
 except ImportError:
     chromadb_service = None
@@ -46,7 +47,7 @@ async def get_stats() -> StatsResponse:
         else:
             status = "chromadb_unavailable"
             docs_count = 0
-        
+
         uptime = (datetime.now() - service_start_time).total_seconds()
 
         return StatsResponse(

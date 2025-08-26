@@ -21,18 +21,18 @@ async def ensure_chromadb_initialized() -> bool:
         if chromadb_service.collection is not None:
             logger.info("ChromaDB already initialized")
             return True
-        
+
         # Try to initialize
         logger.info("Initializing ChromaDB service...")
         success = await chromadb_service.initialize()
-        
+
         if success:
             logger.info("✅ ChromaDB service initialized successfully")
             return True
         else:
             logger.warning("❌ ChromaDB service initialization failed")
             return False
-            
+
     except Exception as e:
         logger.error(f"❌ Error initializing ChromaDB service: {e}")
         return False
@@ -40,23 +40,17 @@ async def ensure_chromadb_initialized() -> bool:
 
 async def get_service_status() -> dict:
     """Get the status of all services"""
-    status = {
-        "chromadb": {
-            "available": False,
-            "initialized": False,
-            "error": None
-        }
-    }
-    
+    status = {"chromadb": {"available": False, "initialized": False, "error": None}}
+
     try:
         # Check ChromaDB availability
         if chromadb_service:
             status["chromadb"]["available"] = True
-            
+
             # Check if initialized
             if chromadb_service.collection:
                 status["chromadb"]["initialized"] = True
-                
+
                 # Try to get stats to confirm it's working
                 try:
                     stats = await chromadb_service.get_stats()
@@ -67,11 +61,13 @@ async def get_service_status() -> dict:
                 # Try to initialize
                 try:
                     await ensure_chromadb_initialized()
-                    status["chromadb"]["initialized"] = chromadb_service.collection is not None
+                    status["chromadb"]["initialized"] = (
+                        chromadb_service.collection is not None
+                    )
                 except Exception as e:
                     status["chromadb"]["error"] = str(e)
-                    
+
     except Exception as e:
         status["chromadb"]["error"] = str(e)
-    
+
     return status

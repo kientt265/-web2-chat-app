@@ -2,7 +2,7 @@
 Schemas for the Agent API Service
 """
 
-from typing import List, Optional, Dict, Any
+from typing import List
 from pydantic import BaseModel
 
 
@@ -42,7 +42,7 @@ class RefreshResponse(BaseModel):
 
 class MCPServerStatus(BaseModel):
     """Status of an MCP server."""
-    
+
     name: str
     status: str
     tools_count: int
@@ -50,6 +50,6 @@ class MCPServerStatus(BaseModel):
 
 class MCPStatusResponse(BaseModel):
     """Response schema for MCP server status."""
-    
+
     servers: List[MCPServerStatus]
     total_servers: int

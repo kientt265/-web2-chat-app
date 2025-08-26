@@ -103,6 +103,7 @@ async def discover_services_get(
     query = ServiceDiscoveryQuery(service_type=service_type, name=name, status=status)
     return await registry.discover_services(query)
 
+
 @router.post("/heartbeat/{service_id}")
 async def heartbeat(
     service_id: str, registry: ServiceRegistry = Depends(get_service_registry)
@@ -140,35 +141,39 @@ async def get_service_tools(
     service_id: str, registry: ServiceRegistry = Depends(get_service_registry)
 ) -> dict:
     """Get available tools from a specific service.
-    
+
     Args:
         service_id: ID of the service to get tools from
-        
+
     Returns:
         Tools available from the service
     """
     service = await registry.get_service(service_id)
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
-    
+
     if service.status != ServiceStatus.HEALTHY:
         raise HTTPException(status_code=503, detail="Service is not healthy")
-    
+
     try:
         # Make HTTP request to service's /tools endpoint
         import httpx
-        
+
         service_url = f"http://{service.host}:{service.port}"
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             response = await client.get(f"{service_url}/tools")
             response.raise_for_status()
-            
+
             return response.json()
-            
+
     except httpx.RequestError as e:
-        raise HTTPException(status_code=503, detail=f"Failed to connect to service: {str(e)}")
+        raise HTTPException(
+            status_code=503, detail=f"Failed to connect to service: {str(e)}"
+        )
     except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=502, detail=f"Service returned error: {e.response.status_code}")
+        raise HTTPException(
+            status_code=502, detail=f"Service returned error: {e.response.status_code}"
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
@@ -178,96 +183,100 @@ async def get_service_tools_by_name(
     service_name: str, registry: ServiceRegistry = Depends(get_service_registry)
 ) -> dict:
     """Get available tools from a service by name.
-    
+
     Args:
         service_name: Name of the service to get tools from
-        
+
     Returns:
         Tools available from the service
     """
     service = await registry.get_service_by_name(service_name)
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
-    
+
     if service.status != ServiceStatus.HEALTHY:
         raise HTTPException(status_code=503, detail="Service is not healthy")
-    
+
     try:
         # Make HTTP request to service's /tools endpoint
         import httpx
-        
+
         service_url = f"http://{service.host}:{service.port}"
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             response = await client.get(f"{service_url}/tools")
             response.raise_for_status()
-            
+
             return response.json()
-            
+
     except httpx.RequestError as e:
-        raise HTTPException(status_code=503, detail=f"Failed to connect to service: {str(e)}")
+        raise HTTPException(
+            status_code=503, detail=f"Failed to connect to service: {str(e)}"
+        )
     except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=502, detail=f"Service returned error: {e.response.status_code}")
+        raise HTTPException(
+            status_code=502, detail=f"Service returned error: {e.response.status_code}"
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
 
 @router.get("/tools")
 async def get_all_tools(
-    service_type: str = "tool", 
-    registry: ServiceRegistry = Depends(get_service_registry)
+    service_type: str = "tool",
+    registry: ServiceRegistry = Depends(get_service_registry),
 ) -> dict:
     """Get all available tools from all services of specified type.
-    
+
     Args:
         service_type: Type of services to get tools from (default: "tool")
-        
+
     Returns:
         Aggregated tools from all services
     """
     from models import ServiceDiscoveryQuery, ServiceStatus, ServiceType
-    
+
     # Discover all tool services
     query = ServiceDiscoveryQuery(
-        service_type=ServiceType(service_type),
-        status=ServiceStatus.HEALTHY
+        service_type=ServiceType(service_type), status=ServiceStatus.HEALTHY
     )
     discovery_result = await registry.discover_services(query)
-    
+
     all_tools = []
     service_tools = {}
-    
+
     import httpx
-    
+
     for service in discovery_result.services:
         try:
             service_url = f"http://{service.host}:{service.port}"
             async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
                 response = await client.get(f"{service_url}/tools")
                 response.raise_for_status()
-                
+
                 tools_data = response.json()
                 tools = tools_data.get("tools", [])
-                
+
                 # Add service information to each tool
                 for tool in tools:
                     tool["service_id"] = service.service_id
                     tool["service_name"] = service.name
                     tool["service_url"] = service_url
-                
+
                 all_tools.extend(tools)
                 service_tools[service.name] = tools
-                
+
         except Exception as e:
             # Log error but continue with other services
             import logging
+
             logger = logging.getLogger(__name__)
             logger.error(f"Failed to get tools from service {service.name}: {e}")
-    
+
     return {
         "tools": all_tools,
         "service_tools": service_tools,
         "services_count": len(discovery_result.services),
-        "tools_count": len(all_tools)
+        "tools_count": len(all_tools),
     }
 
 
