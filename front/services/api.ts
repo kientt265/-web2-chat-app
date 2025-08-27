@@ -35,12 +35,10 @@ export const chatService = {
     api.get('/chat/conversations').then((res) => res.data),
   acceptSecretChat: (data: { conversationId: string; pubkey: string }) =>
     api
-      .patch(`/conversations/${data.conversationId}/accept`, data)
+      .patch(`/chat/conversations/${data.conversationId}/accept`, data)
       .then((res) => res.data),
   leavingSecretChat: (conversationId: string) =>
-    api.delete('/chat/conversations', {
-      data: { conversationId }
-    }).then((res) => res.data)
+    api.delete(`/chat/conversations/${conversationId}`).then((res) => res.data)
 
 }
 // const { type, name, user_ids, subtype, pubkey } = req.body as {

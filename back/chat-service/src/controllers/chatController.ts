@@ -85,7 +85,9 @@ export const createConversation = async (req: Request, res: Response) => {
 
 export const acceptSecretConversation = async (req: Request, res: Response) => {
   const { conversation_id, pubkey } = req.body;
-
+  if (!conversation_id) {
+    return res.status(400).json({ error: "conversationId is required" });
+  }
   if (!req.user?.user_id) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -222,7 +224,7 @@ export const getAllConversations = async (req: Request, res: Response) => {
 
 export const leavingConversations = async (req: Request, res: Response) => {
   try {
-    const {conversation_id} = req.body;
+    const {conversation_id} = req.params;
     if (!req.user?.user_id) {
       return res.status(401).json({ error: 'User not authenticated' });
     }

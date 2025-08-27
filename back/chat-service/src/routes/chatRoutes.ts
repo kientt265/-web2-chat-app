@@ -11,5 +11,5 @@ router.post('/conversation', createConversation);
 router.post('/messages', sendMessage);
 router.get('/conversations', getAllConversations);
 router.patch('/conversations/:conversation_id/accept', acceptSecretConversation);
-router.delete('conversations', leavingConversations);
+router.delete('/conversations/:conversation_id', leavingConversations);
 export default router;
