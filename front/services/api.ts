@@ -33,9 +33,9 @@ export const chatService = {
     api.post('/chat/messages', data).then((res) => res.data),
   getAllConversations: () =>
     api.get('/chat/conversations').then((res) => res.data),
-  acceptSecretChat: (data: { conversationId: string; pubkey: string }) =>
+  acceptSecretChat: (data: { conversation_id: string; pubkey: string }) =>
     api
-      .patch(`/chat/conversations/${data.conversationId}/accept`, data)
+      .patch(`/chat/conversations/${data.conversation_id}/accept`, data)
       .then((res) => res.data),
   leavingSecretChat: (conversationId: string) =>
     api.delete(`/chat/conversations/${conversationId}`).then((res) => res.data)
