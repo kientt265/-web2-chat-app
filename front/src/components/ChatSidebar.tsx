@@ -35,7 +35,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             }`}
             onClick={() => handleConversationClick(conv)}
           >
-            <h3 className="font-semibold">{conv.name}</h3>
+            <h3 className="font-semibold">{conv.name ? conv.name : 'Secret Chat' }</h3>
             <p className="text-sm text-gray-500 truncate">
               {conv.last_message?.content || 'No messages yet'}
             </p>

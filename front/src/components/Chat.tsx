@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import { chatService } from '../../services/api';
-import type { Conversation} from '../../types/index';
+import type { Conversation } from '../../types/index';
 import type { Message } from '../../types/index';
+import {encryptMessage} from './HelperSecretChat'
 import ChatSidebar from './ChatSidebar';
 import ChatArea from './ChatArea';
 import ConversationForm from './ConversationForm';
@@ -23,6 +24,8 @@ function Chat() {
     const fetchConversations = async () => {
       try {
         const data = await chatService.getAllConversations();
+        console.log(data);
+        console.log(userId);
         setConversations(data);
       } catch (error) {
         console.error('Failed to fetch conversations:', error);
@@ -79,7 +82,7 @@ function Chat() {
     }
   };
 
-  const sendMessage = () => {
+  const  sendMessage = async  () => {
     if (!socketRef.current || !activeConversation || !content.trim() || !userId) {
       console.warn('[Chat] ⚠️ Cannot send message: Missing required data', {
         socketConnected: !!socketRef.current,
@@ -89,18 +92,18 @@ function Chat() {
       });
       return;
     }
-
+    const ortherPubkey = activeConversation.members.find((member) => member.user_id !== userId)?.pubkey || '';
     const newMessage = {
-      conversation_id: activeConversation.conversation_id,
+      conversation_id:  activeConversation.conversation_id,
       sender_id: userId,
-      content: content.trim(),
+      content: (activeConversation.subtype === 'secret') ? await encryptMessage(activeConversation.conversation_id, ortherPubkey, content) : content.trim(),
     };
 
     console.log('[Chat] 📤 Attempting to send message:', newMessage);
     socketRef.current.emit('send_message', newMessage);
     setContent('');
   };
-  //
+
 
   const handleConversationClick = async (conv: Conversation) => {
     setActiveConversation(conv);
@@ -121,14 +124,16 @@ function Chat() {
         handleConversationClick={handleConversationClick}
         setShowForm={setShowForm}
       />
-      <ChatArea
-        activeConversation={activeConversation}
-        messages={messages}
-        userId={userId}
-        content={content}
-        setContent={setContent}
-        sendMessage={sendMessage}
-      />
+      {activeConversation && (
+        <ChatArea
+          activeConversation={activeConversation}
+          messages={messages}
+          userId={userId}
+          content={content}
+          setContent={setContent}
+          sendMessage={sendMessage}
+        />
+      )}
     </div>
   );
 }

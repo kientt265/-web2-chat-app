@@ -8,43 +8,51 @@ datasource db {
 }
 
 model conversations {
-  conversation_id String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   type            conversation_type
-  name            String?              @db.VarChar(100)
-  created_at      DateTime?            @default(now()) @db.Timestamp(6)
-  members         conversation_members[] @relation("ConversationMembers")
+  name            String?                @db.VarChar(100)
+  created_at      DateTime?              @default(now()) @db.Timestamp(6)
+  subtype         private_type?
+  members         conversation_members[]
   messages        messages[]
 }
 
 model conversation_members {
-  conversation_id String    @db.Uuid
-  user_id         String    @db.Uuid
-  joined_at       DateTime? @default(now()) @db.Timestamp(6)
-  conversation    conversations @relation("ConversationMembers", fields: [conversation_id], references: [conversation_id], onDelete: Cascade, onUpdate: NoAction)
+  conversation_id String        @db.Uuid
+  user_id         String        @db.Uuid
+  joined_at       DateTime?     @default(now()) @db.Timestamp(6)
+  pubkey          String?
+  conversation    conversations @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade, onUpdate: NoAction)
   @@id([conversation_id, user_id])
 }
 
 model messages {
-  message_id      String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  conversation_id String?             @db.Uuid
-  sender_id       String?             @db.Uuid
+  message_id      String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversation_id String?              @db.Uuid
+  sender_id       String               @db.Uuid
   content         String
-  sent_at         DateTime?           @default(now()) @db.Timestamp(6)
-  is_read         Boolean?            @default(false)
+  sent_at         DateTime?            @default(now()) @db.Timestamp(6)
+  is_read         Boolean?             @default(false)
   deliveries      message_deliveries[]
-  conversation    conversations?      @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade, onUpdate: NoAction)
+  conversation    conversations?       @relation(fields: [conversation_id], references: [conversation_id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 model message_deliveries {
-  message_id    String    @db.Uuid
-  user_id       String    @db.Uuid
-  delivered_at  DateTime? @db.Timestamp(6)
-  read_at       DateTime? @db.Timestamp(6)
-  message       messages  @relation(fields: [message_id], references: [message_id], onDelete: Cascade, onUpdate: NoAction)
+  message_id   String    @db.Uuid
+  user_id      String    @db.Uuid
+  delivered_at DateTime? @db.Timestamp(6)
+  read_at      DateTime? @db.Timestamp(6)
+  message      messages  @relation(fields: [message_id], references: [message_id], onDelete: Cascade, onUpdate: NoAction)
+
   @@id([message_id, user_id])
 }
 
 enum conversation_type {
   private
   group
+}
+
+enum private_type {
+  normal
+  secret
 }

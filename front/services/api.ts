@@ -1,11 +1,12 @@
 import axios from 'axios';
 import { authAtom } from '../context/auth.ts';
 import { getDefaultStore } from 'jotai';
+import type { UserMember } from '../types/index.ts';
 
 const store = getDefaultStore();
 
 const api = axios.create({
-  baseURL: 'http://localhost:80/api/', 
+  baseURL: 'http://localhost:80/api/',
 });
 
 api.interceptors.request.use((config) => {
@@ -17,20 +18,34 @@ api.interceptors.request.use((config) => {
 });
 
 export const userService = {
-    login: (data: { email: string; password: string }) =>
+  login: (data: { email: string; password: string }) =>
     api.post('/auth/login', data).then((res) => res.data),
-    register: (data: { username: string; email: string; password: string }) =>
+  register: (data: { username: string; email: string; password: string }) =>
     api.post('/auth/register', data).then((res) => res.data),
 }
 
 export const chatService = {
   getMessages: (conversationId: string) =>
     api.get(`/chat/messages/${conversationId}`).then((res) => res.data),
-  createConversation: (data: {type: string, name: string, user_ids: string[] }) =>
+  createConversation: (data: { type: string, name?: string, user_ids: UserMember[], subtype?: string, pubkey?: string }) =>
     api.post('/chat/conversation', data).then((res) => res.data),
   sendMessage: (data: { conversationId: string; content: string }) =>
     api.post('/chat/messages', data).then((res) => res.data),
   getAllConversations: () =>
     api.get('/chat/conversations').then((res) => res.data),
+  acceptSecretChat: (data: { conversation_id: string; pubkey: string }) =>
+    api
+      .patch(`/chat/conversations/${data.conversation_id}/accept`, data)
+      .then((res) => res.data),
+  leavingSecretChat: (conversationId: string) =>
+    api.delete(`/chat/conversations/${conversationId}`).then((res) => res.data)
+
 }
+// const { type, name, user_ids, subtype, pubkey } = req.body as {
+//   type: 'private' | 'group';
+//   name?: string;
+//   user_ids: UserMember[];
+//   subtype?: 'normal' | 'secret';
+//   pubkey?: string;
+// };
 
