@@ -9,6 +9,7 @@ import re
 from typing import Any, Dict, List, Union
 import sys
 import os
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from base.core_base import BaseService
 
@@ -18,11 +19,11 @@ logger = logging.getLogger(__name__)
 
 class CalculatorService(BaseService):
     """Core service for calculator operations."""
-    
+
     def __init__(self, config: Dict[str, Any] = None):
         """Initialize calculator service."""
         super().__init__(config)
-        
+
         # Safe mathematical functions for eval
         self.safe_functions = {
             "abs": abs,
@@ -59,7 +60,7 @@ class CalculatorService(BaseService):
 
         # Safe names for eval
         self.safe_names = {"__builtins__": {}, **self.safe_functions}
-    
+
     async def health_check(self) -> bool:
         """Check if calculator service is healthy."""
         try:
@@ -68,7 +69,7 @@ class CalculatorService(BaseService):
             return result == 4
         except Exception:
             return False
-    
+
     def safe_eval(self, expression: str) -> Union[float, int]:
         """Safely evaluate a mathematical expression"""
         # Remove any potentially dangerous characters/keywords
@@ -101,17 +102,17 @@ class CalculatorService(BaseService):
 
     async def calculate(self, expression: str, precision: int = 10) -> Dict[str, Any]:
         """Perform mathematical calculations.
-        
+
         Args:
             expression: Mathematical expression to evaluate
             precision: Number of decimal places for the result
-            
+
         Returns:
             Calculation result
         """
         try:
             self.logger.info(f"Calculating: {expression}")
-            
+
             result = self.safe_eval(expression)
 
             # Round result if it's a float
@@ -119,35 +120,37 @@ class CalculatorService(BaseService):
                 result = round(result, precision)
 
             self.logger.info(f"Calculation result: {result}")
-            
+
             return {
                 "success": True,
                 "result": result,
                 "expression": expression,
                 "precision": precision,
-                "formatted": f"Result: {result}\nExpression: {expression}"
+                "formatted": f"Result: {result}\nExpression: {expression}",
             }
-                
+
         except Exception as e:
             self.logger.error(f"Calculate error: {e}")
             raise Exception(f"Calculation failed: {str(e)}")
 
-    async def calculate_statistics(self, data: List[float], operations: List[str] = None) -> Dict[str, Any]:
+    async def calculate_statistics(
+        self, data: List[float], operations: List[str] = None
+    ) -> Dict[str, Any]:
         """Calculate statistical measures for a dataset.
-        
+
         Args:
             data: Array of numerical data points
             operations: Statistical operations to perform
-            
+
         Returns:
             Statistical results
         """
         if operations is None:
             operations = ["mean", "median", "std"]
-        
+
         try:
             self.logger.info(f"📊 Calculating statistics for {len(data)} data points")
-            
+
             if not data:
                 raise ValueError("No data provided")
 
@@ -200,7 +203,7 @@ class CalculatorService(BaseService):
                     }
 
             self.logger.info("✅ Statistics calculated successfully")
-            
+
             stats_text = "Statistical Results:\n"
             for stat, value in results.items():
                 if isinstance(value, dict):
@@ -210,27 +213,29 @@ class CalculatorService(BaseService):
                 else:
                     stats_text += f"- {stat}: {value}\n"
             stats_text += f"Data points: {len(data)}"
-            
+
             return {
                 "success": True,
                 "results": results,
                 "count": len(data),
-                "formatted": stats_text
+                "formatted": stats_text,
             }
-                
+
         except Exception as e:
             self.logger.error(f"Statistics error: {e}")
             raise Exception(f"Statistics calculation failed: {str(e)}")
 
-    async def convert_units(self, value: float, from_unit: str, to_unit: str, unit_type: str = "length") -> Dict[str, Any]:
+    async def convert_units(
+        self, value: float, from_unit: str, to_unit: str, unit_type: str = "length"
+    ) -> Dict[str, Any]:
         """Convert between different units of measurement.
-        
+
         Args:
             value: Value to convert
             from_unit: Source unit
             to_unit: Target unit
             unit_type: Type of unit conversion
-            
+
         Returns:
             Conversion result
         """
@@ -290,14 +295,14 @@ class CalculatorService(BaseService):
                 # Convert to base unit, then to target unit
                 base_value = value * unit_map[from_unit]
                 result = base_value / unit_map[to_unit]
-            
+
             # Round result
             result = round(result, 6)
-            
+
             self.logger.info(f"✅ Conversion result: {result}")
-            
+
             formatted = f"Conversion Result: {value} {from_unit} = {result} {to_unit}"
-            
+
             return {
                 "success": True,
                 "original_value": value,
@@ -305,16 +310,16 @@ class CalculatorService(BaseService):
                 "from_unit": from_unit,
                 "to_unit": to_unit,
                 "unit_type": unit_type,
-                "formatted": formatted
+                "formatted": formatted,
             }
-                
+
         except Exception as e:
             self.logger.error(f"Unit conversion error: {e}")
             raise Exception(f"Unit conversion failed: {str(e)}")
 
     async def list_math_functions(self) -> Dict[str, Any]:
         """Get available mathematical functions.
-        
+
         Returns:
             Available functions
         """
@@ -322,11 +327,11 @@ class CalculatorService(BaseService):
             functions_data = {
                 "basic_operations": {
                     "+": "Addition",
-                    "-": "Subtraction", 
+                    "-": "Subtraction",
                     "*": "Multiplication",
                     "/": "Division",
                     "**": "Power/Exponentiation",
-                    "%": "Modulo"
+                    "%": "Modulo",
                 },
                 "mathematical_functions": {
                     "sqrt": "Square root",
@@ -335,25 +340,25 @@ class CalculatorService(BaseService):
                     "pow": "Power function",
                     "min": "Minimum value",
                     "max": "Maximum value",
-                    "sum": "Sum of values"
+                    "sum": "Sum of values",
                 },
                 "trigonometric": {
                     "sin": "Sine",
-                    "cos": "Cosine", 
+                    "cos": "Cosine",
                     "tan": "Tangent",
                     "asin": "Arc sine",
                     "acos": "Arc cosine",
-                    "atan": "Arc tangent"
+                    "atan": "Arc tangent",
                 },
                 "logarithmic": {
                     "log": "Natural logarithm",
                     "log10": "Base-10 logarithm",
                     "log2": "Base-2 logarithm",
-                    "exp": "Exponential function"
+                    "exp": "Exponential function",
                 },
                 "constants": {
                     "pi": "Pi (3.14159...)",
-                    "e": "Euler's number (2.71828...)"
+                    "e": "Euler's number (2.71828...)",
                 },
                 "statistics": {
                     "mean": "Average value",
@@ -363,24 +368,24 @@ class CalculatorService(BaseService):
                     "var/variance": "Variance",
                     "min": "Minimum value",
                     "max": "Maximum value",
-                    "quartiles": "Q1, Q2, Q3 values"
-                }
+                    "quartiles": "Q1, Q2, Q3 values",
+                },
             }
-            
+
             functions_text = "Available Mathematical Functions:\n\n"
-            
+
             for category, funcs in functions_data.items():
                 functions_text += f"**{category.upper().replace('_', ' ')}:**\n"
                 for func_name, func_desc in funcs.items():
                     functions_text += f"- {func_name}: {func_desc}\n"
                 functions_text += "\n"
-            
+
             return {
                 "success": True,
                 "functions": functions_data,
-                "formatted": functions_text
+                "formatted": functions_text,
             }
-                
+
         except Exception as e:
             self.logger.error(f"List functions error: {e}")
             raise Exception(f"Failed to list functions: {str(e)}")
