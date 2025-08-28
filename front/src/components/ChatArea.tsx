@@ -1,7 +1,7 @@
-import React, { act, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Conversation, Message } from '../../types/index';
 import { chatService } from '../../services/api';
-import { generateConversationKey, saveKeyLocalStorage, deriveSecret, encryptMessage, decryptMessage } from '../components/HelperSecretChat'
+import { generateConversationKey, saveKeyLocalStorage, decryptMessage} from '../components/HelperSecretChat'
 interface ChatAreaProps {
   activeConversation: Conversation;
   messages: Message[];
@@ -19,17 +19,38 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   setContent,
   sendMessage,
 }) => {
+  const [decryptedMessages, setDecryptedMessages] = useState<Message[]>([]);
   const ortherPubkey = activeConversation.members.find((member) => member.user_id !== userId)?.pubkey || '';
-  const [key, setKey] = useState<{ pubkey: string, privkey: string }>({
-    pubkey: activeConversation.members.find((member) => member.user_id === userId)?.pubkey || "",
-    privkey: ""
-  });
 
+  useEffect(() => {
+    const processMessages = async () => {
+      if (activeConversation.subtype === 'secret') {
+        const results = await Promise.all(
+          messages.map(async (msg) => ({
+            ...msg,
+            content: await decryptMessage(activeConversation.conversation_id, ortherPubkey, msg.content),
+          }))
+        );
+        setDecryptedMessages(results);
+      } else {
+        setDecryptedMessages(messages);
+      }
+    };
+
+    processMessages();
+  }, [messages, activeConversation]);
+
+  //TODO: Chưa test
   const callAcceptSecretConversation = async () => {
     try {
+      if (!activeConversation?.conversation_id) {
+        console.error("No conversation_id found!");
+        return;
+      }      
       const res = generateConversationKey();
-      const respone = await chatService.acceptSecretChat({ conversationId: activeConversation ? activeConversation.conversation_id : '', pubkey: res.pub });
-      setKey({ pubkey: res.pub, privkey: res.priv });
+      console.log(res);
+      console.log(activeConversation.conversation_id)
+      const respone = await chatService.acceptSecretChat({ conversation_id: activeConversation.conversation_id, pubkey: res.pub });
       saveKeyLocalStorage(activeConversation.conversation_id, res.priv, res.pub);
       console.log(respone);
     } catch (error) {
@@ -80,31 +101,26 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
 
           </div>
+          {/* // Cách hiện tại - không hoạt động đúng với async */}
           <div className="flex-1 overflow-y-auto p-4">
-            // Cách hiện tại - không hoạt động đúng với async
-            {messages.map(async (msg) => {
-            const displayContent = activeConversation.subtype === 'secret' 
-            ? await decryptMessage(activeConversation.conversation_id, ortherPubkey, msg.content)
-            : msg.content;
-                
-              return (
+
+            {decryptedMessages.map((msg) => (
+              <div
+                key={`${msg.message_id}-${msg.sent_at}`}
+                className={`mb-4 flex ${msg.sender_id === userId ? 'justify-end' : 'justify-start'}`}
+              >
                 <div
-                  key={`${msg.message_id}-${msg.sent_at}`}
-                  className={`mb-4 flex ${msg.sender_id === userId ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`rounded-lg p-3 max-w-[70%] ${
-                      msg.sender_id === userId ? 'bg-blue-500 text-white' : 'bg-gray-100'
+                  className={`rounded-lg p-3 max-w-[70%] ${msg.sender_id === userId ? 'bg-blue-500 text-white' : 'bg-gray-100'
                     }`}
-                  >
-                    <div className="text-sm">{displayContent}</div>
-                    <div className="text-xs opacity-75 mt-1">
-                      {new Date(msg.sent_at).toLocaleTimeString()}
-                    </div>
+                >
+                  <div className="text-sm">{msg.content}</div>
+                  <div className="text-xs opacity-75 mt-1">
+                    {new Date(msg.sent_at).toLocaleTimeString()}
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
+
           </div>
           <div className="p-4 border-t">
             <div className="flex gap-2">
@@ -115,7 +131,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 placeholder="Type a message"
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
               />
-              //TODO
+
               <button
                 className="bg-blue-500 text-white px-4 py-2 rounded-lg"
                 onClick={sendMessage}

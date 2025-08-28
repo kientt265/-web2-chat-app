@@ -13,6 +13,7 @@
     "@tailwindcss/vite": "^4.1.11",
     "@types/elliptic": "^6.4.18",
     "axios": "^1.11.0",
+    "buffer": "^6.0.3",
     "elliptic": "^6.6.1",
     "jotai": "^2.13.0",
     "react": "^19.1.0",

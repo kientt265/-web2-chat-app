@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { error } from 'console';
 
 const prisma = new PrismaClient();
 
@@ -88,6 +89,10 @@ export const acceptSecretConversation = async (req: Request, res: Response) => {
   if (!conversation_id) {
     return res.status(400).json({ error: "conversationId is required" });
   }
+  if (!pubkey) {
+    return res.status(400).json({error: "invalid pubky"});
+  }
+  console.log(pubkey);
   if (!req.user?.user_id) {
     return res.status(401).json({ error: "Unauthorized" });
   }

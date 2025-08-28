@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { chatService } from '../../services/api';
 import type { Conversation } from '../../types/index';
-import { generateConversationKey, getConversationKey, deriveSecret, saveKeyLocalStorage } from './HelperSecretChat';
+import { generateConversationKey, saveKeyLocalStorage } from './HelperSecretChat';
 
 interface ConversationFormProps {
   setConversations: React.Dispatch<React.SetStateAction<Conversation[]>>;

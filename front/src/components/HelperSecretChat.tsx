@@ -4,7 +4,7 @@ const ecdh = new ec("curve25519");
 const LOCAL_KEY = "conversationKeys";
 
 
-function loadKeys() {
+ function loadKeys() {
   const data = localStorage.getItem(LOCAL_KEY);
   return data ? JSON.parse(data) : {};
 }
@@ -65,19 +65,23 @@ function hexToUint8Array(hexString: string): Uint8Array {
 export const encryptMessage = async (conversationId: string, otherPubHex: string, message: string) => {
   try {
     const shareKeyString = deriveSecret(conversationId, otherPubHex);
-    if (shareKeyString) {
-      const shareKey = hexToUint8Array(shareKeyString);
+    if (!shareKeyString) {
+      console.error('Failed to derive shared key');
+      return message;
+    }
 
-      if (!shareKey) return message;
+    const shareKey = hexToUint8Array(shareKeyString);
+    // Kiểm tra độ dài của shareKey
+    if (shareKey.length !== 32) { // AES-256 yêu cầu khóa 32 bytes
+      console.error('Invalid shared key length');
+      return message;
+    }
 
-      // Chuyển đổi tin nhắn thành dạng binary
-      const encoder = new TextEncoder();
-      const messageBytes = encoder.encode(message);
+    const encoder = new TextEncoder();
+    const messageBytes = encoder.encode(message);
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
 
-      // Tạo initialization vector (IV)
-      const iv = window.crypto.getRandomValues(new Uint8Array(12));
-
-      // Import shareKey để sử dụng với AES-GCM
+    try {
       const key = await window.crypto.subtle.importKey(
         'raw',
         shareKey,
@@ -86,7 +90,6 @@ export const encryptMessage = async (conversationId: string, otherPubHex: string
         ['encrypt']
       );
 
-      // Mã hóa tin nhắn
       const encryptedData = await window.crypto.subtle.encrypt(
         {
           name: 'AES-GCM',
@@ -96,13 +99,14 @@ export const encryptMessage = async (conversationId: string, otherPubHex: string
         messageBytes
       );
 
-      // Kết hợp IV và dữ liệu đã mã hóa
       const encryptedArray = new Uint8Array(iv.length + encryptedData.byteLength);
       encryptedArray.set(iv);
       encryptedArray.set(new Uint8Array(encryptedData), iv.length);
 
-      // Chuyển đổi thành chuỗi Base64 để truyền đi
       return btoa(String.fromCharCode(...encryptedArray));
+    } catch (cryptoError) {
+      console.error('Encryption operation failed:', cryptoError);
+      return message;
     }
   } catch (error) {
     console.error('Failed to encrypt message:', error);
@@ -116,6 +120,7 @@ export const encryptMessage = async (conversationId: string, otherPubHex: string
     if (shareKeyString) {
 
       const shareKey = hexToUint8Array(shareKeyString);
+      console.log(`Shared Key: ${shareKey}`)
       if (!shareKey) return encryptedMessage;
 
       // Chuyển đổi từ Base64 về dạng binary
@@ -149,9 +154,11 @@ export const encryptMessage = async (conversationId: string, otherPubHex: string
       // Chuyển đổi kết quả về dạng text
       const decoder = new TextDecoder();
       return decoder.decode(decryptedData);
+    } else {
+      return encryptedMessage ?? "";;
     }
   } catch (error) {
     console.error('Failed to decrypt message:', error);
-    return encryptedMessage;
+    return encryptedMessage ?? "";
   }
 }
