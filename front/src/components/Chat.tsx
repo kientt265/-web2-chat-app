@@ -4,7 +4,7 @@ import io from 'socket.io-client';
 import { chatService } from '../../services/api';
 import type { Conversation } from '../../types/index';
 import type { Message } from '../../types/index';
-import {encryptMessage} from './HelperSecretChat'
+import { encryptMessage } from './HelperSecretChat'
 import ChatSidebar from './ChatSidebar';
 import ChatArea from './ChatArea';
 import ConversationForm from './ConversationForm';
@@ -82,7 +82,7 @@ function Chat() {
     }
   };
 
-  const  sendMessage = async  () => {
+  const sendMessage = async () => {
     if (!socketRef.current || !activeConversation || !content.trim() || !userId) {
       console.warn('[Chat] ⚠️ Cannot send message: Missing required data', {
         socketConnected: !!socketRef.current,
@@ -94,7 +94,7 @@ function Chat() {
     }
     const ortherPubkey = activeConversation.members.find((member) => member.user_id !== userId)?.pubkey || '';
     const newMessage = {
-      conversation_id:  activeConversation.conversation_id,
+      conversation_id: activeConversation.conversation_id,
       sender_id: userId,
       content: (activeConversation.subtype === 'secret') ? await encryptMessage(activeConversation.conversation_id, ortherPubkey, content) : content.trim(),
     };
@@ -126,6 +126,8 @@ function Chat() {
       />
       {activeConversation && (
         <ChatArea
+          setConversations={setConversations}
+          setActiveConversation={setActiveConversation}
           activeConversation={activeConversation}
           messages={messages}
           userId={userId}
