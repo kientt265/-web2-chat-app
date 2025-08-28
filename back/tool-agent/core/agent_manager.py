@@ -9,7 +9,7 @@ All tools are now loaded via MCP (Model Context Protocol) servers.
 from typing import Dict
 
 from dotenv import load_dotenv
-from langchain.chat_models import init_chat_model
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import create_react_agent
 
@@ -39,10 +39,17 @@ class AgentManager:
 
         # Try to initialize the model, but continue without it if credentials are missing
         try:
-            self.model = init_chat_model("google_genai:gemini-2.5-flash")
+            self.model = ChatGoogleGenerativeAI(
+                model="gemini-1.5-flash",
+                temperature=0,
+                max_tokens=None,
+                timeout=None,
+                max_retries=2,
+            )
         except Exception as e:
             print(f"Warning: Could not initialize Google Gemini model: {e}")
             print("Agent will continue without LLM capabilities")
+            self.model = None
 
         # Tools will be loaded lazily when first needed
 

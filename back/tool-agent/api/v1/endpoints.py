@@ -53,15 +53,11 @@ async def get_tools():
 async def refresh_tools():
     """Refresh the agent's tools"""
     try:
-        # Get HTTP MCP client and refresh tools
-        http_mcp_client = get_http_mcp_client()
-        tools = await http_mcp_client.get_all_tools()
-
-        # Update agent with new tools
-        agent_manager.update_tools(tools)
+        # Refresh tools in agent manager
+        await agent_manager.refresh_tools()
 
         return RefreshResponse(
-            success=True, message=f"Successfully refreshed {len(tools)} tools"
+            success=True, message="Successfully refreshed tools"
         )
     except Exception as e:
         raise HTTPException(
