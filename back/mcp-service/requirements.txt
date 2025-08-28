@@ -6,6 +6,9 @@ httpx==0.28.1
 # MCP Server framework
 fastmcp==2.11.3
 
+# Web scraping dependencies
+beautifulsoup4==4.12.3
+
 # Other dependencies
 pydantic>=2.11.7  # Required by FastMCP
 python-multipart==0.0.20
