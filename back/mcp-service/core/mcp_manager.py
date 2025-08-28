@@ -8,6 +8,10 @@ import importlib
 from typing import Dict, List, Any, Optional
 import httpx
 
+# Import server classes
+from servers.calculator import CalculatorServer  
+from servers.webscraper import WebscraperServer
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,129 +27,43 @@ class MCPServerProcess:
         """
         self.name = name
         self.config = config
-        self.process: Optional[asyncio.subprocess.Process] = None
         self.server_instance = None
         self.is_running = False
         self.port = config.get("port", 8000)
+        
+        # Create server instance based on name
+        self._create_server_instance()
+    
+    def _create_server_instance(self):
+        """Create the appropriate server instance."""
+        if self.name == "calculator":
+            self.server_instance = CalculatorServer(self.config)
+        elif self.name == "webscraper":
+            self.server_instance = WebscraperServer(self.config)
+        else:
+            raise ValueError(f"Unknown server type: {self.name}")
     
     async def start(self):
         """Start the MCP server."""
         try:
-            if self.config.get("type") == "fastmcp":
-                # Start FastMCP server
-                await self._start_fastmcp_server()
-            else:
-                # Start process-based server
-                await self._start_process_server()
+            if self.server_instance is None:
+                raise ValueError(f"No server instance for '{self.name}'")
             
+            # Since we're using the layered architecture, the server
+            # doesn't need to actually run as a separate process
+            # The tools are available through the API handler
             self.is_running = True
-            logger.info(f"Started MCP server '{self.name}' on port {self.port}")
+            logger.info(f"Started MCP server '{self.name}' with layered architecture")
             
         except Exception as e:
             logger.error(f"Failed to start MCP server '{self.name}': {e}")
             raise
     
-    async def _start_fastmcp_server(self):
-        """Start FastMCP server as a background task."""
-        try:
-            # Import the server module
-            module_name = self.config.get("module")
-            if not module_name:
-                raise ValueError(f"No module specified for FastMCP server '{self.name}'")
-            
-            # Dynamically import the server module
-            module = importlib.import_module(module_name)
-            
-            # Get the FastMCP app instance
-            if hasattr(module, 'app'):
-                self.server_instance = module.app
-            else:
-                raise ValueError(f"FastMCP server module '{module_name}' must have 'app' attribute")
-            
-            # Start the server in a background task using asyncio.create_task
-            # We'll create a simple HTTP server using the app instance
-            import uvicorn
-            
-            # Create a background task to run the server
-            config = uvicorn.Config(
-                app=self.server_instance,
-                host="0.0.0.0", 
-                port=self.port,
-                log_level="info"
-            )
-            server = uvicorn.Server(config)
-            
-            # Start server in background task
-            asyncio.create_task(server.serve())
-            
-            # Give it a moment to start
-            await asyncio.sleep(1.0)
-            
-            logger.info(f"FastMCP server '{self.name}' started on port {self.port}")
-            
-        except Exception as e:
-            logger.error(f"Failed to start FastMCP server '{self.name}': {e}")
-            raise
-    
-    async def _start_process_server(self):
-        """Start process-based MCP server."""
-        try:
-            command = self.config.get("command", [])
-            if not command:
-                raise ValueError(f"No command specified for process server '{self.name}'")
-            
-            args = self.config.get("args", [])
-            env = self.config.get("env", {})
-            
-            full_command = command + args
-            
-            # Start the process
-            self.process = await asyncio.create_subprocess_exec(
-                *full_command,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                env=env
-            )
-            
-            logger.info(f"Process MCP server '{self.name}' started with PID {self.process.pid}")
-            
-        except Exception as e:
-            logger.error(f"Failed to start process server '{self.name}': {e}")
-            raise
-    
-    async def _health_check(self):
-        """Check if the server is responding."""
-        try:
-            async with httpx.AsyncClient() as client:
-                # Try to connect to the server
-                response = await client.get(
-                    f"http://localhost:{self.port}/health",
-                    timeout=5.0
-                )
-                if response.status_code != 200:
-                    raise Exception(f"Server health check failed: {response.status_code}")
-                    
-        except Exception as e:
-            logger.warning(f"Health check failed for server '{self.name}': {e}")
-            # Don't raise - server might not have health endpoint
-    
     async def stop(self):
         """Stop the MCP server."""
         try:
-            if self.process:
-                # Stop process-based server
-                self.process.terminate()
-                try:
-                    await asyncio.wait_for(self.process.wait(), timeout=5.0)
-                except asyncio.TimeoutError:
-                    self.process.kill()
-                    await self.process.wait()
-                
-                self.process = None
-            
-            # For FastMCP servers, we can't easily stop them since they're running
-            # in background tasks. They'll be stopped when the main process exits.
+            if self.server_instance:
+                await self.server_instance.stop()
             
             self.is_running = False
             logger.info(f"Stopped MCP server '{self.name}'")
@@ -159,24 +77,44 @@ class MCPServerProcess:
         Returns:
             List of tool definitions
         """
-        if not self.is_running:
+        if not self.is_running or not self.server_instance:
             return []
         
         try:
-            if self.config.get("type") == "fastmcp":
-                # For FastMCP servers, return configured tools
-                return [
-                    {"name": tool, "server": self.name}
-                    for tool in self.config.get("tools", [])
-                ]
-            else:
-                # For process servers, we'd need to query via MCP protocol
-                # This is a simplified implementation
-                return []
+            tool_definitions = self.server_instance.get_tool_definitions()
+            return [
+                {
+                    "name": tool_name,
+                    "description": tool_def.get("description", ""),
+                    "parameters": tool_def.get("parameters", {}),
+                    "server": self.name
+                }
+                for tool_name, tool_def in tool_definitions.items()
+            ]
                 
         except Exception as e:
             logger.error(f"Failed to get tools from server '{self.name}': {e}")
             return []
+    
+    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
+        """Call a tool on this server.
+        
+        Args:
+            tool_name: Tool name
+            arguments: Tool arguments
+            
+        Returns:
+            Tool result
+        """
+        if not self.is_running or not self.server_instance:
+            raise ValueError(f"Server '{self.name}' is not running")
+        
+        try:
+            result = await self.server_instance.call_tool(tool_name, arguments)
+            return result
+        except Exception as e:
+            logger.error(f"Failed to call tool '{tool_name}' on server '{self.name}': {e}")
+            raise
 
 
 class MCPManager:
@@ -308,63 +246,5 @@ class MCPManager:
         if not server_process.is_running:
             raise ValueError(f"Server '{server_name}' is not running")
         
-        if server_process.config.get("type") == "fastmcp":
-            # For FastMCP servers, call via HTTP
-            return await self._call_fastmcp_tool(server_process, tool_name, arguments)
-        else:
-            # For process servers, call via MCP protocol
-            return await self._call_process_tool(server_process, tool_name, arguments)
-    
-    async def _call_fastmcp_tool(
-        self, 
-        server_process: MCPServerProcess, 
-        tool_name: str, 
-        arguments: Dict[str, Any]
-    ) -> Any:
-        """Call tool on FastMCP server via HTTP.
-        
-        Args:
-            server_process: Server process instance
-            tool_name: Tool name
-            arguments: Tool arguments
-            
-        Returns:
-            Tool result
-        """
-        try:
-            async with httpx.AsyncClient() as client:
-                # Call the tool endpoint
-                response = await client.post(
-                    f"http://localhost:{server_process.port}/tools/{tool_name}",
-                    json=arguments,
-                    timeout=30.0
-                )
-                
-                if response.status_code != 200:
-                    raise Exception(f"Tool call failed: {response.status_code} - {response.text}")
-                
-                return response.json()
-                
-        except Exception as e:
-            logger.error(f"Failed to call FastMCP tool '{tool_name}': {e}")
-            raise
-    
-    async def _call_process_tool(
-        self, 
-        server_process: MCPServerProcess, 
-        tool_name: str, 
-        arguments: Dict[str, Any]
-    ) -> Any:
-        """Call tool on process server via MCP protocol.
-        
-        Args:
-            server_process: Server process instance
-            tool_name: Tool name
-            arguments: Tool arguments
-            
-        Returns:
-            Tool result
-        """
-        # This would implement the MCP protocol communication
-        # For now, return a placeholder
-        raise NotImplementedError("Process-based MCP tool calling not implemented yet")
+        # Call tool through the server process
+        return await server_process.call_tool(tool_name, arguments)

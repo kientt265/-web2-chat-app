@@ -24,34 +24,21 @@ class Config:
             "port": int(os.getenv("MCP_SERVICE_PORT", "3005")),
             "debug": os.getenv("DEBUG", "false").lower() == "true",
             
-            # External service URLs
-            "ext_tool_service_url": os.getenv("EXT_TOOL_SERVICE_URL", "http://ext-tool:3006"),
-            
             # MCP server configurations
             "mcp_servers": [
                 {
                     "name": "calculator",
-                    "type": "fastmcp",
+                    "type": "layered",
                     "port": 8001,
-                    "module": "servers.calculator_server",
                     "enabled": True,
-                    "tools": [
-                        "calculate",
-                        "advanced_calculate", 
-                        "statistics",
-                        "unit_conversion"
-                    ]
+                    "config": {}
                 },
                 {
                     "name": "webscraper",
-                    "type": "fastmcp",
+                    "type": "layered",
                     "port": 8002,
-                    "module": "servers.webscraper_server",
                     "enabled": True,
-                    "tools": [
-                        "scrape_webpage",
-                        "extract_text"
-                    ]
+                    "config": {}
                 }
             ],
             

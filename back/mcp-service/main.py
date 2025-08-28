@@ -5,7 +5,6 @@ This service provides standardized tool interfaces through MCP protocol,
 allowing other services to connect and use tools like calculator and web scraper.
 """
 
-import asyncio
 import logging
 import uvicorn
 import httpx
@@ -15,6 +14,7 @@ from contextlib import asynccontextmanager
 from typing import Dict, Any
 
 from config import get_config
+from core.mcp_manager import MCPManager
 
 # Configure logging
 logging.basicConfig(
@@ -23,17 +23,29 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Global MCP manager instance
+mcp_manager: MCPManager = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifespan - startup and shutdown."""
+    global mcp_manager
     
     # Startup
     logger.info("Starting MCP Service")
+    config = get_config()
+    mcp_manager = MCPManager(config)
+    
+    # Start all MCP servers
+    await mcp_manager.start_all_servers()
+    
     yield
     
     # Shutdown
     logger.info("Shutting down MCP Service")
+    if mcp_manager:
+        await mcp_manager.stop_all_servers()
 
 
 # Create FastAPI application
@@ -67,124 +79,61 @@ async def root():
 @app.get("/health")
 async def health():
     """Health check endpoint."""
-    config = get_config()
+    global mcp_manager
     
-    # Simple health check - just verify we can reach ext-tool
-    try:
-        ext_tool_url = config.get_setting("ext_tool_service_url")
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(f"{ext_tool_url}/health")
-            ext_tool_healthy = response.status_code == 200
-    except:
-        ext_tool_healthy = False
+    # Get server status from MCP manager
+    server_status = {}
+    if mcp_manager:
+        server_status = await mcp_manager.get_server_status()
     
     return {
         "status": "healthy",
-        "ext_tool_status": "healthy" if ext_tool_healthy else "unhealthy",
-        "servers": {
-            "calculator": {"running": True, "port": 8001, "type": "proxy"},
-            "webscraper": {"running": True, "port": 8002, "type": "proxy"}
-        }
+        "servers": server_status
     }
 
 
 @app.get("/servers")
 async def list_servers():
     """List all available MCP servers."""
-    return [
-        {
-            "name": "calculator",
-            "running": True,
-            "port": 8001,
-            "type": "proxy",
-            "tools": ["calculate", "calculate_statistics", "convert_units", "list_math_functions"],
-            "tool_count": 4
-        },
-        {
-            "name": "webscraper",
-            "running": True,
-            "port": 8002,
-            "type": "proxy", 
-            "tools": ["scrape_webpage", "extract_text"],
-            "tool_count": 2
-        }
-    ]
+    global mcp_manager
+    
+    if not mcp_manager:
+        return []
+    
+    return await mcp_manager.get_server_info()
 
 
 @app.get("/servers/{server_name}/tools")
 async def list_server_tools(server_name: str):
     """List tools available from a specific server."""
-    tools_mapping = {
-        "calculator": [
-            {"name": "calculate", "description": "Perform mathematical calculations"},
-            {"name": "calculate_statistics", "description": "Calculate statistical measures"},
-            {"name": "convert_units", "description": "Convert between units"},
-            {"name": "list_math_functions", "description": "List available math functions"}
-        ],
-        "webscraper": [
-            {"name": "scrape_webpage", "description": "Scrape content from webpage"},
-            {"name": "extract_text", "description": "Extract text from webpage"}
-        ]
-    }
+    global mcp_manager
     
-    if server_name not in tools_mapping:
-        raise HTTPException(status_code=404, detail=f"Server '{server_name}' not found")
+    if not mcp_manager:
+        raise HTTPException(status_code=503, detail="MCP manager not available")
     
-    return {"server": server_name, "tools": tools_mapping[server_name]}
+    try:
+        tools = await mcp_manager.list_server_tools(server_name)
+        return {"server": server_name, "tools": tools}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @app.post("/servers/{server_name}/tools/{tool_name}")
 async def call_tool(server_name: str, tool_name: str, arguments: Dict[str, Any] = None):
     """Call a tool on a specific server."""
+    global mcp_manager
+    
+    if not mcp_manager:
+        raise HTTPException(status_code=503, detail="MCP manager not available")
+    
     if arguments is None:
         arguments = {}
     
     try:
-        # For now, directly proxy to ext-tool service
-        config = get_config()
-        ext_tool_url = config.get_setting("ext_tool_service_url")
-        
-        # Map server and tool names to ext-tool endpoints
-        tool_mapping = {
-            "calculator": {
-                "calculate": "/tools/calculator/calculate",
-                "calculate_statistics": "/tools/calculator/statistics", 
-                "convert_units": "/tools/calculator/convert",
-                "list_math_functions": "/tools/calculator/functions"
-            },
-            "webscraper": {
-                "scrape_webpage": "/tools/scraper/scrape",
-                "extract_text": "/tools/scraper/extract-text"
-            }
-        }
-        
-        if server_name not in tool_mapping:
-            raise HTTPException(status_code=404, detail=f"Server '{server_name}' not found")
-        
-        if tool_name not in tool_mapping[server_name]:
-            raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found on server '{server_name}'")
-        
-        endpoint = tool_mapping[server_name][tool_name]
-        
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            # Make request to ext-tool service
-            # Different tools use different HTTP methods
-            if server_name == "calculator" or (server_name == "webscraper" and tool_name == "scrape_webpage"):
-                # POST request for calculator tools and scrape_webpage
-                response = await client.post(f"{ext_tool_url}{endpoint}", json=arguments)
-            else:
-                # GET request for other tools like extract_text
-                response = await client.get(f"{ext_tool_url}{endpoint}", params=arguments)
-            
-            response.raise_for_status()
-            result = response.json()
-            
-            return {"result": result}
-            
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=503, detail=f"Failed to connect to ext-tool service: {str(e)}")
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=f"Tool execution failed: {e.response.text}")
+        result = await mcp_manager.call_tool(server_name, tool_name, arguments)
+        return {"result": result}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -192,8 +141,16 @@ async def call_tool(server_name: str, tool_name: str, arguments: Dict[str, Any] 
 @app.post("/servers/restart")
 async def restart_servers():
     """Restart all MCP servers."""
-    # Since we're just proxying, there's nothing to restart
-    return {"message": "All proxy servers are always running"}
+    global mcp_manager
+    
+    if not mcp_manager:
+        raise HTTPException(status_code=503, detail="MCP manager not available")
+    
+    try:
+        await mcp_manager.restart_all_servers()
+        return {"message": "All MCP servers restarted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to restart servers: {str(e)}")
 
 
 if __name__ == "__main__":
