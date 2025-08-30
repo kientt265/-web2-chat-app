@@ -59,9 +59,19 @@ export const handleSocketConnection = (io: Server) => {
     console.log("[Init] handleSocketConnection called");
 
 
-    io.use(authSocket).on('connection', (socket: Socket) => {
+    io.on('connection', (socket: Socket) => {
         console.log(`[Socket] ✨ New client connected | ID: ${socket.id}`);
         console.log(`[Socket] 🔑 Auth token:`, socket.handshake.auth);
+
+        socket.on('join-app', (userId: string) => {
+            try {
+                socket.join(userId);
+                console.log(`[Socket] 👤 User ${userId} joined personal room`);
+            } catch(error) {
+                console.error(`[Socket] ❌ Error joining personal room:`, error);
+                socket.emit('error', { message: 'Failed to join conversation' });
+            }
+        })
 
         socket.on('join_conversation', async (conversationId: string) => {
             try {

@@ -42,7 +42,7 @@ const ConversationForm: React.FC<ConversationFormProps> = ({
         pubkey: key.pubkey
       });
 
-      setConversations((prev) => [...prev, newConversation]);
+      // setConversations((prev) => [...prev, newConversation]);
       saveKeyLocalStorage(newConversation.conversation_id, key.privkey, key.pubkey);
       setConversationForm({ type: 'private', name: '', user_ids: [], subtype: 'normal' });
       setUsernameInput({ user_id: '', pubkey: null });

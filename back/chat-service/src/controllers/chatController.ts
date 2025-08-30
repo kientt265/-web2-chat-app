@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { io } from '../index'; 
 import { error } from 'console';
 
 const prisma = new PrismaClient();
@@ -76,7 +77,14 @@ export const createConversation = async (req: Request, res: Response) => {
       },
       include: { members: true },
     });
-
+    conversation.members.find((member) => {
+      if(member.conversation_id !== host_user_id) {
+        io.to(member.user_id).emit('new_conversation', conversation);
+        console.log('Broadcast New Conversation')
+      }
+    }
+    )
+    console.log('Tạo cuộc trò chuyện thành công')
     res.status(201).json(conversation);
   } catch (error) {
     console.error('Error creating conversation:', error);

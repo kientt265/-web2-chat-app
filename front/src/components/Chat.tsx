@@ -36,7 +36,7 @@ function Chat() {
 
   // Socket effect for real-time messages
   useEffect(() => {
-    if (!activeConversation) return;
+    // if (!activeConversation) return;
 
     const socket = io('http://localhost:3002', {
       path: '/socket.io',
@@ -46,9 +46,35 @@ function Chat() {
 
     socketRef.current = socket;
 
-    socket.on('connect', () => {
-      console.log('[Socket] ✅ Connected successfully');
-      socket.emit('join_conversation', activeConversation.conversation_id);
+    socket.on("connect", () => {
+      console.log("[Socket] ✅ Connected successfully");
+      socket.emit("join-app", userId);
+    });
+
+    socket.on("new_conversation", (conversation: any) => {
+      console.log("[Socket] 🆕 New conversation:", conversation);
+      try {
+        setConversations((prev) => 
+          prev.some((c) => c.conversation_id === conversation.conversation_id)
+        ? prev
+        :     [
+          {
+            conversation_id: conversation.conversation_id,
+            type: conversation.type,
+            subtype: conversation.subtype,
+            name: conversation.name,
+            created_at: conversation.created_at,
+            member_count: conversation.members?.length,
+            members: conversation.members,
+            last_message: null
+          },
+          ...prev
+        ]);
+        console.log('Thành công');
+      } catch (error) {
+        console.log(error);
+      }
+      
     });
 
     socket.on('new_message', (message: Message) => {
@@ -65,10 +91,16 @@ function Chat() {
 
     return () => {
       socket.disconnect();
-      setMessages([]);
     };
-  }, [activeConversation]);
+  }, [userId]);
 
+  useEffect(() => {
+    if (activeConversation && socketRef.current) {
+      console.log("[Chat] 🔗 Joining conversation:", activeConversation.conversation_id);
+      socketRef.current.emit("join_conversation", activeConversation.conversation_id);
+      handleGetMessages(activeConversation.conversation_id);
+    }
+  }, [activeConversation]);
 
 
   const handleGetMessages = async (conversationId: string) => {

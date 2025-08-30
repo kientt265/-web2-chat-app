@@ -14,7 +14,7 @@ const prisma = new PrismaClient();
 const app = express();
 const server = http.createServer(app);
 //cors for socket.io
-const  io = new Server(server, {
+export const  io = new Server(server, {
   path: "/socket.io/",
   cors: {
     origin: 'http://localhost:5173',

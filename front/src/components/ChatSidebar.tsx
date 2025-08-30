@@ -24,6 +24,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           Thêm cuộc trò chuyện
         </button>
       </div>
+
       <div className="divide-y">
         {conversations.map((conv) => (
           <div
@@ -35,9 +36,9 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             }`}
             onClick={() => handleConversationClick(conv)}
           >
-            <h3 className="font-semibold">{conv.name ? conv.name : 'Secret Chat' }</h3>
+            <h3 className="font-semibold">{conv.name ? conv.name : conv.conversation_id }</h3>
             <p className="text-sm text-gray-500 truncate">
-              {conv.last_message?.content || 'No messages yet'}
+              {((conv.last_message?.content) && conv.subtype === 'secret') ? 'Click to show secret msg': conv.last_message?.content || 'No messages yet'}
             </p>
             <p className="text-xs text-gray-400">
               {conv.last_message

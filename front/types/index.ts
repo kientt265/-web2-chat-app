@@ -28,7 +28,7 @@ export interface Conversation {
     conversation_id: string;
     type: 'group' | 'private';
     subtype: 'normal' | 'secret';
-    name: string;
+    name: string | null;
     created_at: string;
     member_count: number;
     members: ConversationMember[];
