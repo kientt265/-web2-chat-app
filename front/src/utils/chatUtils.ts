@@ -13,7 +13,7 @@ const LOCAL_KEY = "conversationKeys";
 function saveKeys(keys: any) {
   localStorage.setItem(LOCAL_KEY, JSON.stringify(keys));
 }
-  
+
 
 export function generateConversationKey() {
   const keyPair = ecdh.genKeyPair();

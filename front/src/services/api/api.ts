@@ -1,7 +1,7 @@
 import axios from 'axios';
-import { authAtom } from '../context/auth.ts';
+import { authAtom } from '../../contexts/AuthContext.tsx';
 import { getDefaultStore } from 'jotai';
-import type { UserMember } from '../types/index.ts';
+import type { UserMember } from '../../types/index.ts';
 
 const store = getDefaultStore();
 

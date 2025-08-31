@@ -1,8 +1,8 @@
 
 import { Routes, Route } from 'react-router-dom';
-import Login from '../pages/public/Login';
-import Signup from '../pages/public/SignUp.tsx';
-import Chat from './components/Chat.tsx';
+import Login from './pages/public/Login.tsx';
+import Signup from './pages/public/SignUp.tsx';
+import Chat from './pages/public/ChatPage.tsx';
 function App() {
 
   return (

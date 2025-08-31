@@ -1,10 +1,10 @@
-import { userService } from '../../services/api.ts';
+import { userService } from '../../services/api/api.ts';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAtom } from 'jotai';
-import { authAtom } from '../../context/auth';
+import { authAtom } from '../../contexts/AuthContext.tsx';
 import type { User } from '../../types/index.ts';
-import logo from '../../src/assets/LoGo.png';
+import logo from '../../assets/LoGo.png';
 
 
 function Login() {

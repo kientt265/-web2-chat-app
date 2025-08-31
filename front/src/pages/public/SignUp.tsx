@@ -1,8 +1,8 @@
-import { userService } from '../../services/api.ts';
+import { userService } from '../../services/api/api.ts';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { User } from '../../types';
-import logo from '../../src/assets/LoGo.png';
+import logo from '../../assets/LoGo.png';
 
 function Signup() {
     const [formData, setFormData] = useState<User>({
@@ -66,10 +66,6 @@ function Signup() {
                 onChange={handleInputChange}
                 required
             />
-
-
-
-
             <button 
                     className='hover:bg-red-600 rounded cursor-pointer p-2 bg-blue-600' 
                     type="submit"

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import type { Conversation, Message } from '../../types/index';
-import { chatService } from '../../services/api';
-import { generateConversationKey, saveKeyLocalStorage, decryptMessage } from '../components/HelperSecretChat'
+import { useSecretChat } from '../../hooks/useSecretChat';
+import { useMessages } from '../../hooks/useMessages';
+import { decryptMessage } from '../../components/HelperSecretChat'
 interface ChatAreaProps {
   setConversations: React.Dispatch<React.SetStateAction<Conversation[]>>;
   setActiveConversation: React.Dispatch<React.SetStateAction<Conversation | null>>;
@@ -25,6 +26,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 }) => {
   const [decryptedMessages, setDecryptedMessages] = useState<Message[]>([]);
   const ortherPubkey = activeConversation.members.find((member) => member.user_id !== userId)?.pubkey || '';
+  const { callAcceptSecretConversation, callRejectSecretConversation } = useSecretChat(
+    setConversations,
+    setActiveConversation, 
+    activeConversation
+  );
 
   useEffect(() => {
     const processMessages = async () => {
@@ -44,46 +50,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     processMessages();
   }, [messages, activeConversation]);
 
-
-  const callAcceptSecretConversation = async () => {
-    try {
-      if (!activeConversation?.conversation_id) {
-        console.error("No conversation_id found!");
-        return;
-      }
-      const res = generateConversationKey();
-      console.log(res);
-      console.log(activeConversation.conversation_id)
-      const respone = await chatService.acceptSecretChat({ conversation_id: activeConversation.conversation_id, pubkey: res.pub });
-
-      saveKeyLocalStorage(activeConversation.conversation_id, res.priv, res.pub);
-
-      const updated = await chatService.getAllConversations();
-      setConversations(updated);
-
-      const freshConv = updated.find((c: { conversation_id: string; }) => c.conversation_id === activeConversation.conversation_id);
-      if (freshConv) {
-        setActiveConversation(freshConv);
-      }
-      console.log(respone);
-    } catch (error) {
-      console.log('Failed to accept secret conservation!!!', error);
-    }
-  }
-
-  const callRejectSecretConversation = async () => {
-    try {
-      const respone = await chatService.leavingSecretChat(activeConversation ? activeConversation.conversation_id : '');
-      const updated = await chatService.getAllConversations();
-      setConversations(updated);
-      setActiveConversation(null);
-      console.log('Reject join secret conservation', respone);
-    } catch (error) {
-      console.log('Failed to accept secret conservation!!!', error);
-    }
-  }
-
-  //TODO: Cập nhật những thay đổi mới từ database
   return (
     <div className="flex-1 flex flex-col">
       {activeConversation ? (
