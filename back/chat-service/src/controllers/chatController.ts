@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { io } from '../index'; 
+import {uploadFile} from '../config/s3';
 import { error } from 'console';
+
 
 const prisma = new PrismaClient();
 
@@ -276,5 +278,17 @@ export const seenMessage = async (req: Request, res: Response) => {
     
   } catch (error) {
     console.log('Error controller seenMessage', error);
+  }
+}
+
+export const sendImage = async (req: Request, res: Response) => {
+  try {
+    const file: Express.Multer.File | undefined = req.file;
+    if (!file) return res.status(400).json({ error: "Chưa có file" });
+    console.log(file.originalname);
+    const url =  await uploadFile(`uploads/${file.originalname}`, 'kien', `images/${file.originalname}`);
+    return res.status(200).json(url);
+  } catch (error) {
+    console.log('Error controller sendImage', error);
   }
 }
