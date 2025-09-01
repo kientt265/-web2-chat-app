@@ -165,7 +165,7 @@ export const handleSocketConnection = (io: Server) => {
                 console.log(`[Socket] ✅ Message successfully sent to Kafka`);
                 socket.emit('message_sent', { success: true, message });
                 io.to(data.conversation_id).emit('new_message', message);
-
+                
             } catch (error) {
                 console.error('[Socket] ❌ Error processing message:', error);
                 socket.emit('error', {

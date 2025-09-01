@@ -116,6 +116,7 @@ export const encryptMessage = async (conversationId: string, otherPubHex: string
 
  export const  decryptMessage = async (conversationId: string, otherPubHex: string, encryptedMessage: string) => {
   try {
+    if(encryptedMessage.startsWith('http://') || encryptedMessage.startsWith('https://')) return encryptedMessage;
     const shareKeyString = deriveSecret(conversationId, otherPubHex);
     if (shareKeyString) {
 

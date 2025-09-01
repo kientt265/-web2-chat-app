@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Conversation, Message } from '../../types/index';
 import { useSecretChat } from '../../hooks/useSecretChat';
-import { useMessages } from '../../hooks/useMessages';
 import { decryptMessage } from '../../components/HelperSecretChat'
 import more_logo from '../../assets/more.png';
+import image_upload from '../../assets/image.png'
+import { chatService } from '../../services/api/api';
 interface ChatAreaProps {
   setConversations: React.Dispatch<React.SetStateAction<Conversation[]>>;
   setActiveConversation: React.Dispatch<React.SetStateAction<Conversation | null>>;
@@ -29,6 +30,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const ortherPubkey = activeConversation.members.find((member) => member.user_id !== userId)?.pubkey || '';
   const [showSidebar, setShowSidebar] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { callAcceptSecretConversation, callRejectSecretConversation } = useSecretChat(
     setConversations,
     setActiveConversation,
@@ -52,6 +56,31 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
     processMessages();
   }, [messages, activeConversation]);
+
+  const handleUpload = async (uploadFile: File) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", uploadFile);
+      const res = await chatService.uploadImage(formData, activeConversation.conversation_id);
+      console.log("Upload thành công:", res);
+      setImageUrl(res);
+    } catch (err) {
+      console.error("Lỗi upload:", err);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const selectedFile = e.target.files[0];
+      setFile(selectedFile);
+      // setContent(selectedFile.name);
+      handleUpload(selectedFile); // truyền file trực tiếp
+    }
+  };
+
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
     <div className="flex-1 flex flex-col">
@@ -146,7 +175,17 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                   className={`rounded-lg p-3 max-w-[70%] ${msg.sender_id === userId ? 'bg-blue-500 text-white' : 'bg-gray-100'
                     }`}
                 >
-                  <div className="text-sm">{msg.content}</div>
+                  {/* Nếu là link ảnh thì hiển thị ảnh */}
+                  {msg.content.startsWith('http://') || msg.content.startsWith('https://') ? (
+                    <img
+                      src={msg.content}
+                      alt="sent"
+                      className="rounded-lg max-w-full h-auto"
+                    />
+                  ) : (
+                    <div className="text-sm">{msg.content}</div>
+                  )}
+
                   <div className="text-xs opacity-75 mt-1">
                     {new Date(msg.sent_at).toLocaleTimeString()}
                   </div>
@@ -154,9 +193,19 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               </div>
             ))}
 
+
           </div>
           <div className="p-4 border-t">
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <img src={image_upload} onClick={handleImageClick} alt="Image" className="w-6 h-6 cursor-pointer" />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+                onKeyPress={(e) => e.key === 'Enter'}
+              />
               <input
                 className="flex-1 border rounded-lg px-4 py-2"
                 value={content}
@@ -164,7 +213,6 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 placeholder="Type a message"
                 onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
               />
-
               <button
                 className="bg-blue-500 text-white px-4 py-2 rounded-lg"
                 onClick={sendMessage}

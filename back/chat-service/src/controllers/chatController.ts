@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { io } from '../index'; 
-import {uploadFile} from '../config/s3';
+import { io } from '../index';
+import { uploadFile } from '../config/s3';
 import { error } from 'console';
 
 
@@ -80,7 +80,7 @@ export const createConversation = async (req: Request, res: Response) => {
       include: { members: true },
     });
     conversation.members.find((member) => {
-      if(member.conversation_id !== host_user_id) {
+      if (member.conversation_id !== host_user_id) {
         io.to(member.user_id).emit('new_conversation', conversation);
         console.log('Broadcast New Conversation')
       }
@@ -100,7 +100,7 @@ export const acceptSecretConversation = async (req: Request, res: Response) => {
     return res.status(400).json({ error: "conversationId is required" });
   }
   if (!pubkey) {
-    return res.status(400).json({error: "invalid pubky"});
+    return res.status(400).json({ error: "invalid pubky" });
   }
   console.log(pubkey);
   if (!req.user?.user_id) {
@@ -239,7 +239,7 @@ export const getAllConversations = async (req: Request, res: Response) => {
 
 export const leavingConversations = async (req: Request, res: Response) => {
   try {
-    const {conversation_id} = req.params;
+    const { conversation_id } = req.params;
     if (!req.user?.user_id) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
@@ -275,19 +275,44 @@ export const leavingConversations = async (req: Request, res: Response) => {
 
 export const seenMessage = async (req: Request, res: Response) => {
   try {
-    
+
   } catch (error) {
     console.log('Error controller seenMessage', error);
   }
 }
 
 export const sendImage = async (req: Request, res: Response) => {
+  const { conversation_id } = req.params;
+
   try {
+    if (!req.user?.user_id) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const sender_id = req.user.user_id;
+    const member = await prisma.conversation_members.findFirst({
+      where: {
+        conversation_id,
+        user_id: sender_id
+      }
+    });
+    if (!member) {
+      return res.status(403).json({ error: 'User is not a member of this conversation' });
+    }
     const file: Express.Multer.File | undefined = req.file;
     if (!file) return res.status(400).json({ error: "Chưa có file" });
     console.log(file.originalname);
-    const url =  await uploadFile(`uploads/${file.originalname}`, 'kien', `images/${file.originalname}`);
-    return res.status(200).json(url);
+    const content = await uploadFile(`uploads/${file.originalname}`, 'kien', `images/${file.originalname}`);
+    const message = await prisma.messages.create({
+      data: {
+        conversation_id,
+        sender_id,
+        content,
+        sent_at: new Date(),
+      }
+    });
+
+    io.to(message.conversation_id!).emit('new_message', message);
+    res.status(201).json(message);
   } catch (error) {
     console.log('Error controller sendImage', error);
   }

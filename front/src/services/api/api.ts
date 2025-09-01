@@ -38,7 +38,12 @@ export const chatService = {
       .patch(`/chat/conversations/${data.conversation_id}/accept`, data)
       .then((res) => res.data),
   leavingSecretChat: (conversationId: string) =>
-    api.delete(`/chat/conversations/${conversationId}`).then((res) => res.data)
+    api.delete(`/chat/conversations/${conversationId}`).then((res) => res.data),
+  uploadImage: (formData: FormData, conversation_id: string) =>
+    api.post(`/chat/conversations/${conversation_id}/upload`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }).then((res) => res.data),
+  
 
 }
 // const { type, name, user_ids, subtype, pubkey } = req.body as {

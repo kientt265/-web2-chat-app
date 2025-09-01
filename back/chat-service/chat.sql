@@ -29,6 +29,9 @@ CREATE TABLE conversation_members (
 ALTER TABLE conversation_members
 ADD COLUMN pubkey TEXT NULL;
 
+ALTER TABLE conversation_members
+ADD COLUMN last_read_message_id UUID REFERENCES messages(message_id);
+
 CREATE TABLE messages (
     message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID REFERENCES conversations(conversation_id) ON DELETE CASCADE,
