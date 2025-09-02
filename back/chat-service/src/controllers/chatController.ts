@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { io } from '../index';
-import { uploadFile } from '../config/s3';
+import { uploadFile } from '../config/s3'
+import fs from "fs";
 import { error } from 'console';
 
 
@@ -302,6 +303,13 @@ export const sendImage = async (req: Request, res: Response) => {
     if (!file) return res.status(400).json({ error: "Chưa có file" });
     console.log(file.originalname);
     const content = await uploadFile(`uploads/${file.originalname}`, 'kien', `images/${file.originalname}`);
+    fs.unlink(`uploads/${file.originalname}`, (err) => {
+      if (err) {
+        console.error("Lỗi khi xóa file local:", err);
+      } else {
+        console.log("Đã xóa file local:");
+      }
+    });
     const message = await prisma.messages.create({
       data: {
         conversation_id,
@@ -317,3 +325,43 @@ export const sendImage = async (req: Request, res: Response) => {
     console.log('Error controller sendImage', error);
   }
 }
+
+export const updateLastSeenMsg = async (req: Request, res: Response) => {
+  const { conversation_id, last_read_message_id } = req.body;
+  if (!req.user?.user_id) {
+    return res.status(401).json({ error: 'User not authenticated' });
+  }
+
+  const user_id = req.user.user_id;
+  try {
+    const member = await prisma.conversation_members.findUnique({
+      where: {
+        conversation_id_user_id: {
+          conversation_id,
+          user_id,
+        },
+      },
+    });
+
+    if (!member) {
+      return res.status(404).json({ error: 'Member not found in this conversation' });
+    }
+
+    await prisma.conversation_members.update({
+      where: {
+        conversation_id_user_id: {
+          conversation_id,
+          user_id,
+        },
+      },
+      data: {
+        last_read_message_id,
+      },
+    });
+
+    return res.status(200).json({ message: 'Last seen message updated successfully' });
+  } catch (error) {
+    console.error('Error updating last seen message:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};

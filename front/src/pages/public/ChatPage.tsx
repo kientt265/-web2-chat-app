@@ -1,4 +1,4 @@
-import  { useState } from 'react';
+import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import type { Conversation } from '../../types/index';
 import { encryptMessage } from '../../components/HelperSecretChat'
@@ -6,10 +6,10 @@ import ChatSidebar from '../../components/chat/ChatSidebar';
 import ChatArea from '../../components/chat/ChatArea';
 import ConversationForm from '../../components/chat/ConversationForm';
 import { useChat } from '../../hooks/useChat';
-import {useSocket} from '../../hooks/useSocket';
+import { useSocket } from '../../hooks/useSocket';
 
 function Chat() {
-  const { conversations, setConversations, messages, setMessages, handleGetMessages } = useChat();
+  const { conversations, setConversations, messages, setMessages, handleGetMessages, updateLastMsg } = useChat();
   const location = useLocation();
   const userId = location.state?.user_id;
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
@@ -43,6 +43,7 @@ function Chat() {
   const handleConversationClick = async (conv: Conversation) => {
     setActiveConversation(conv);
     await handleGetMessages(conv.conversation_id);
+    await updateLastMsg(conv.conversation_id, userId);
   };
 
   return (
@@ -54,6 +55,7 @@ function Chat() {
         />
       )}
       <ChatSidebar
+        userId={userId}
         conversations={conversations}
         activeConversation={activeConversation}
         handleConversationClick={handleConversationClick}

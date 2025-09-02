@@ -43,6 +43,8 @@ export const chatService = {
     api.post(`/chat/conversations/${conversation_id}/upload`, formData, {
       headers: { "Content-Type": "multipart/form-data" },
     }).then((res) => res.data),
+  updateLastMsg: (data: {conversation_id: string, last_read_message_id: string}) =>
+    api.post(`/chat/conversations/update_last_read_msg`, data).then((res) => res.data),
   
 
 }

@@ -22,6 +22,7 @@ export interface ConversationMember {
     user_id: string;
     joined_at: string;
     pubkey: string;
+    last_read_message_id: string | null;
 }
 
 export interface Conversation {

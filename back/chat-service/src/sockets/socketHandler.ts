@@ -3,7 +3,7 @@ import { producer } from '../config/kafka';
 import { Server, Socket } from "socket.io";
 import { randomUUID } from "crypto";
 import { authSocket } from "../middleware/authSocket";
-import {ResponeAI} from "../types/types";
+import { ResponeAI } from "../types/types";
 import WebSocket from 'ws';
 
 const prisma = new PrismaClient();
@@ -29,8 +29,8 @@ export const connectBotSocket = (io: Server) => {
                 const botMessage = {
                     message_id: randomUUID(),
                     conversation_id: message.data.session_id,
-                    sender_id: "00000000-0000-0000-0000-000000000001", 
-                    content: message.data.response, 
+                    sender_id: "00000000-0000-0000-0000-000000000001",
+                    content: message.data.response,
                     sent_at: new Date().toISOString(),
                     is_read: false
                 };
@@ -65,9 +65,10 @@ export const handleSocketConnection = (io: Server) => {
 
         socket.on('join-app', (userId: string) => {
             try {
+                socket.data.userId = userId;
                 socket.join(userId);
                 console.log(`[Socket] 👤 User ${userId} joined personal room`);
-            } catch(error) {
+            } catch (error) {
                 console.error(`[Socket] ❌ Error joining personal room:`, error);
                 socket.emit('error', { message: 'Failed to join conversation' });
             }
@@ -75,7 +76,9 @@ export const handleSocketConnection = (io: Server) => {
 
         socket.on('join_conversation', async (conversationId: string) => {
             try {
-                const userId = socket.handshake.auth.token; // Assuming token is user ID
+                const userId = socket.data.userId;
+                socket.data.conversationId = conversationId;
+                //const userId = socket.handshake.auth.token;
                 console.log(`[Socket] 🚪 User ${socket.id} attempting to join conversation ${conversationId}`);
                 socket.join(conversationId);
                 console.log(`[Socket] ✅ User ${socket.id} joined conversation ${conversationId}`);
@@ -93,13 +96,12 @@ export const handleSocketConnection = (io: Server) => {
         }) => {
             console.log(`[Socket] 📩 Message received from client:`, data);
             try {
-                // Validate input data
+
                 if (!data.conversation_id || !data.sender_id || !data.content) {
                     console.error('[Socket] ❌ Missing required fields:', data);
                     throw new Error('Missing required fields');
                 }
 
-                // Validate UUID format
                 if (!isValidUUID(data.conversation_id) || !isValidUUID(data.sender_id)) {
                     console.error('[Socket] ❌ Invalid UUID format:', {
                         conversation_id: data.conversation_id,
@@ -136,14 +138,14 @@ export const handleSocketConnection = (io: Server) => {
                 };
 
                 if (data.content.startsWith('@bot ')) {
-                    const command = data.content.substring(5); 
+                    const command = data.content.substring(5);
                     if (botWs && botWs.readyState === WebSocket.OPEN) {
                         botWs.send(JSON.stringify({
                             type: 'query',
                             data: {
                                 message: command
                             },
-                            session_id: data.conversation_id, 
+                            session_id: data.conversation_id,
                         }));
                         console.log(`[Bot] 📤 Sent command to bot: ${command}`);
                     } else {
@@ -165,7 +167,7 @@ export const handleSocketConnection = (io: Server) => {
                 console.log(`[Socket] ✅ Message successfully sent to Kafka`);
                 socket.emit('message_sent', { success: true, message });
                 io.to(data.conversation_id).emit('new_message', message);
-                
+
             } catch (error) {
                 console.error('[Socket] ❌ Error processing message:', error);
                 socket.emit('error', {
@@ -174,8 +176,38 @@ export const handleSocketConnection = (io: Server) => {
             }
         });
 
-        socket.on('disconnect', (reason) => {
+        socket.on('disconnect', async (reason) => {
             console.log(`[Socket] ❌ Client disconnected | ID: ${socket.id} | Reason: ${reason}`);
+            const userId = socket.data.userId;
+            const conversationId = socket.data.conversationId;
+            if (!userId || !conversationId) {
+                console.warn(`[Socket] ⚠️ Missing userId or conversationId on disconnect`);
+                return;
+            }
+    
+            try {
+                const lastMsg = await prisma.messages.findFirst({
+                    where: { conversation_id: conversationId },
+                    orderBy: { sent_at: 'desc' }
+                });
+    
+                if (lastMsg && lastMsg.sender_id !== userId) {
+                    await prisma.conversation_members.update({
+                        where: {
+                            conversation_id_user_id: {
+                                conversation_id: conversationId,
+                                user_id: userId
+                            }
+                        },
+                        data: {
+                            last_read_message_id: lastMsg.message_id
+                        }
+                    });
+                    console.log(`[Socket] ✅ Updated last_read_message for ${userId}`);
+                }
+            } catch (error) {
+                console.error(`[Socket] ❌ Error updating last_read_message:`, error);
+            }
         });
     });
 }

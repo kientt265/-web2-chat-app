@@ -74,7 +74,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       const selectedFile = e.target.files[0];
       setFile(selectedFile);
       // setContent(selectedFile.name);
-      handleUpload(selectedFile); // truyền file trực tiếp
+      handleUpload(selectedFile);
     }
   };
 
@@ -154,7 +154,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             className={`fixed top-0 right-0 h-full w-64 bg-white shadow-lg transform transition-transform duration-300 z-40 ${showSidebar ? "translate-x-0" : "translate-x-full"}`}>
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="text-lg font-semibold">Tùy chọn</h3>
-              <button onClick={() => setShowSidebar(false)} className="text-gray-500 hover:text-gray-700">
+              <button onClick={() => setShowSidebar(false)} className="text-gray-500 hover:text-gray-700 cursor-pointer">
                 ✕
               </button>
             </div>
