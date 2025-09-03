@@ -2,6 +2,7 @@ import {producer, consumer } from '../config/kafka';
 import {Server} from 'socket.io';
 import { PrismaClient } from '@prisma/client';
 
+
 const prisma = new PrismaClient();
 export async function initKafka(io: Server) {
     try {
@@ -24,6 +25,7 @@ export async function initKafka(io: Server) {
                     console.log(`[Kafka] 📨 Received message on topic "${topic}":`, {
                         conversation_id: msg.conversation_id,
                         sender_id: msg.sender_id,
+                        receiver: msg.receiver,
                         timestamp: new Date(msg.sent_at).toISOString()
                     });
 
@@ -40,6 +42,12 @@ export async function initKafka(io: Server) {
                             is_read: false,
                         },
                     });
+                    const sender = msg.sender_id;
+                    msg.receiver.map((re: any) => {
+                        (re.user_id !== sender) ? 
+                        io.to(re.user_id).emit('new_msg_socker_user_personal', msg) :
+                        re
+                    })
                     console.log(`[Database] ✅ Message saved to database`);
                 } catch (error) {
                     console.error('[Kafka] ❌ Error processing message:', error);

@@ -130,12 +130,24 @@ export const handleSocketConnection = (io: Server) => {
                 if (!conversation) {
                     throw new Error('Conversation not found');
                 }
+
+                const members = await prisma.conversation_members.findMany({
+                    where: {
+                        conversation_id: data.conversation_id,
+                    },
+                });
+                const receiver: string[] = [];
+                members.map((mem) => {
+                    receiver.push(mem.user_id);
+                })
                 const message = {
                     message_id: randomUUID(),
                     ...data,
+                    receiver: receiver,
                     sent_at: new Date().toISOString(),
                     is_read: false
                 };
+                console.log(message);
 
                 if (data.content.startsWith('@bot ')) {
                     const command = data.content.substring(5);

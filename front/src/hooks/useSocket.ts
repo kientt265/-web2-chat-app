@@ -26,23 +26,40 @@ export const useSocket = (
 
     socket.on('new_conversation', (conversation: any) => {
       console.log('[Socket] 🆕 New conversation:', conversation);
-      setConversations((prev) => 
+      setConversations((prev) =>
         prev.some((c) => c.conversation_id === conversation.conversation_id)
           ? prev
           : [
-              {
-                conversation_id: conversation.conversation_id,
-                type: conversation.type,
-                subtype: conversation.subtype,
-                name: conversation.name,
-                created_at: conversation.created_at,
-                member_count: conversation.members?.length,
-                members: conversation.members,
-                last_message: null
-              },
-              ...prev
-            ]
+            {
+              conversation_id: conversation.conversation_id,
+              type: conversation.type,
+              subtype: conversation.subtype,
+              name: conversation.name,
+              created_at: conversation.created_at,
+              member_count: conversation.members?.length,
+              members: conversation.members,
+              last_message: null
+            },
+            ...prev
+          ]
       );
+    });
+
+    socket.on('new_msg_socker_user_personal', (message: Message) => {
+      console.log('[Socket-Personal] 📩 Real-time message received:', message);
+      setConversations((prev) =>
+        prev.map((conv) =>
+          conv.conversation_id === message.conversation_id
+            ? {
+              ...conv,
+              last_message: conv.last_message
+                ? { ...conv.last_message, message_id: message.message_id }
+                : { ...message },
+            }
+            : conv
+        )
+      );
+
     });
 
     socket.on('new_message', (message: Message) => {
