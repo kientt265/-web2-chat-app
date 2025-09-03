@@ -136,6 +136,8 @@ export const handleSocketConnection = (io: Server) => {
                         conversation_id: data.conversation_id,
                     },
                 });
+                console.log(members);
+                console.log(data.conversation_id);
                 const receiver: string[] = [];
                 members.map((mem) => {
                     receiver.push(mem.user_id);
@@ -196,13 +198,13 @@ export const handleSocketConnection = (io: Server) => {
                 console.warn(`[Socket] ⚠️ Missing userId or conversationId on disconnect`);
                 return;
             }
-    
+
             try {
                 const lastMsg = await prisma.messages.findFirst({
                     where: { conversation_id: conversationId },
                     orderBy: { sent_at: 'desc' }
                 });
-    
+
                 if (lastMsg && lastMsg.sender_id !== userId) {
                     await prisma.conversation_members.update({
                         where: {

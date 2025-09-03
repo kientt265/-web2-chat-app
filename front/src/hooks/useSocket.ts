@@ -47,18 +47,22 @@ export const useSocket = (
 
     socket.on('new_msg_socker_user_personal', (message: Message) => {
       console.log('[Socket-Personal] 📩 Real-time message received:', message);
-      setConversations((prev) =>
-        prev.map((conv) =>
-          conv.conversation_id === message.conversation_id
-            ? {
-              ...conv,
-              last_message: conv.last_message
-                ? { ...conv.last_message, message_id: message.message_id }
-                : { ...message },
-            }
-            : conv
-        )
-      );
+      if(activeConversation?.conversation_id !== message.conversation_id) {
+        console.log('1', activeConversation?.conversation_id);
+        console.log('2', message.conversation_id);
+        setConversations((prev) =>
+          prev.map((conv) =>
+            conv.conversation_id === message.conversation_id
+              ? {
+                ...conv,
+                last_message: conv.last_message
+                  ? { ...conv.last_message, message_id: message.message_id }
+                  : { ...message },
+              }
+              : conv
+          )
+        );
+      }
 
     });
 

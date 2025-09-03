@@ -32,13 +32,12 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
           const member = conv.members.find((mem) => mem.user_id === userId);
           const isUnread =
             conv.last_message?.message_id !== member?.last_read_message_id;
-
           return (
             <div
               key={conv.conversation_id}
               className={`p-4 cursor-pointer hover:bg-gray-200 ${activeConversation?.conversation_id === conv.conversation_id
-                  ? "bg-gray-200"
-                  : ""
+                ? "bg-gray-200"
+                : ""
                 }`}
               onClick={() => handleConversationClick(conv)}
             >
@@ -47,16 +46,14 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
               </h3>
 
               <p
-                className={`text-sm truncate ${conv.last_message?.message_id !==
-                    conv.members.find((m) => m.user_id === userId)?.last_read_message_id
-                    ? 'font-bold text-black'
-                    : 'font-normal text-gray-500'
+                className={`text-sm truncate ${isUnread ? 'font-bold text-black' : 'font-normal text-gray-500'
                   }`}
               >
                 {conv.subtype === 'secret' && conv.last_message?.content
                   ? 'Click to show secret msg'
                   : conv.last_message?.content || 'No messages yet'}
               </p>
+
 
 
               <p className="text-xs text-gray-400">

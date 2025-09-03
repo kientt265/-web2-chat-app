@@ -42,6 +42,7 @@ function Chat() {
 
   const handleConversationClick = async (conv: Conversation) => {
     setActiveConversation(conv);
+    console.log('TEST',activeConversation?.conversation_id);
     await handleGetMessages(conv.conversation_id);
     await updateLastMsg(conv.conversation_id, userId);
   };

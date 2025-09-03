@@ -1,5 +1,5 @@
-import {producer, consumer } from '../config/kafka';
-import {Server} from 'socket.io';
+import { producer, consumer } from '../config/kafka';
+import { Server } from 'socket.io';
 import { PrismaClient } from '@prisma/client';
 
 
@@ -8,18 +8,18 @@ export async function initKafka(io: Server) {
     try {
         await producer.connect();
         console.log('[Kafka] ✅ Producer connected successfully');
-        
+
         await consumer.connect();
         console.log('[Kafka] ✅ Consumer connected successfully');
-        
+
         await consumer.subscribe({ topic: 'private-chat-messages', fromBeginning: true });
         console.log('[Kafka] 📥 Subscribed to private-chat-messages topic');
-        
-        await consumer.subscribe({topic: 'group-chat-messages', fromBeginning: true});
+
+        await consumer.subscribe({ topic: 'group-chat-messages', fromBeginning: true });
         console.log('[Kafka] 📥 Subscribed to group-chat-messages topic');
 
         await consumer.run({
-            eachMessage: async ({topic, partition, message}) => {
+            eachMessage: async ({ topic, partition, message }) => {
                 try {
                     const msg = JSON.parse(message.value?.toString() || '{}');
                     console.log(`[Kafka] 📨 Received message on topic "${topic}":`, {
@@ -42,13 +42,16 @@ export async function initKafka(io: Server) {
                             is_read: false,
                         },
                     });
-                    const sender = msg.sender_id;
-                    msg.receiver.map((re: any) => {
-                        (re.user_id !== sender) ? 
-                        io.to(re.user_id).emit('new_msg_socker_user_personal', msg) :
-                        re
-                    })
                     console.log(`[Database] ✅ Message saved to database`);
+                    const sender = msg.sender_id;
+                    msg.receiver.map((userId: string) => {
+                        if (userId !== sender) {
+                            io.to(userId).emit('new_msg_socker_user_personal', msg); 
+                            console.log('Emit personal socket DONEEE!!!', userId);
+                        }
+                    });
+
+
                 } catch (error) {
                     console.error('[Kafka] ❌ Error processing message:', error);
                 }
