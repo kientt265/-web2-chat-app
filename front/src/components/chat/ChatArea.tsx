@@ -31,6 +31,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const [showSidebar, setShowSidebar] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [imageUrl, setImageUrl] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const { callAcceptSecretConversation, callRejectSecretConversation } = useSecretChat(
@@ -81,7 +82,9 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const handleImageClick = () => {
     fileInputRef.current?.click();
   };
-
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [decryptedMessages]);
   return (
     <div className="flex-1 flex flex-col">
       {activeConversation ? (
@@ -190,9 +193,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                     {new Date(msg.sent_at).toLocaleTimeString()}
                   </div>
                 </div>
+
               </div>
             ))}
-
+            <div ref={messagesEndRef} />
 
           </div>
           <div className="p-4 border-t">

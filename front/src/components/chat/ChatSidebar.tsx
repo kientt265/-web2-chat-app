@@ -28,42 +28,59 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       </div>
 
       <div className="divide-y">
-        {conversations.map((conv) => {
-          const member = conv.members.find((mem) => mem.user_id === userId);
-          const isUnread =
-            conv.last_message?.message_id !== member?.last_read_message_id;
-          return (
-            <div
-              key={conv.conversation_id}
-              className={`p-4 cursor-pointer hover:bg-gray-200 ${activeConversation?.conversation_id === conv.conversation_id
-                ? "bg-gray-200"
-                : ""
+        {conversations
+          .slice() // copy mảng tránh mutate state gốc
+          .sort((a, b) => {
+            const aTime = a.last_message
+              ? new Date(a.last_message.sent_at).getTime()
+              : 0;
+            const bTime = b.last_message
+              ? new Date(b.last_message.sent_at).getTime()
+              : 0;
+            return bTime - aTime; // sort giảm dần: mới nhất lên trên
+          })
+          .map((conv) => {
+            const member = conv.members.find((mem) => mem.user_id === userId);
+            const isUnread =
+              conv.last_message?.message_id !== member?.last_read_message_id;
+
+            return (
+              <div
+                key={conv.conversation_id}
+                className={`p-4 cursor-pointer hover:bg-gray-200 ${
+                  activeConversation?.conversation_id === conv.conversation_id
+                    ? "bg-gray-200"
+                    : ""
                 }`}
-              onClick={() => handleConversationClick(conv)}
-            >
-              <h3 className="font-semibold">
-                {conv.name ? conv.name : conv.conversation_id}
-              </h3>
-
-              <p
-                className={`text-sm truncate ${isUnread ? 'font-bold text-black' : 'font-normal text-gray-500'
-                  }`}
+                onClick={() => handleConversationClick(conv)}
               >
-                {conv.subtype === 'secret' && conv.last_message?.content
-                  ? 'Click to show secret msg'
-                  : conv.last_message?.content || 'No messages yet'}
-              </p>
+                {/* Tên cuộc trò chuyện */}
+                <h3 className="font-semibold">
+                  {conv.name ? conv.name : conv.conversation_id}
+                </h3>
 
+                {/* Nội dung tin nhắn cuối */}
+                <p
+                  className={`text-sm truncate ${
+                    isUnread
+                      ? "font-bold text-black"
+                      : "font-normal text-gray-500"
+                  }`}
+                >
+                  {conv.subtype === "secret" && conv.last_message?.content
+                    ? "Click to show secret msg"
+                    : conv.last_message?.content || "No messages yet"}
+                </p>
 
-
-              <p className="text-xs text-gray-400">
-                {conv.last_message
-                  ? new Date(conv.last_message.sent_at).toLocaleDateString()
-                  : ""}
-              </p>
-            </div>
-          );
-        })}
+                {/* Thời gian tin nhắn cuối */}
+                <p className="text-xs text-gray-400">
+                  {conv.last_message
+                    ? new Date(conv.last_message.sent_at).toLocaleDateString()
+                    : ""}
+                </p>
+              </div>
+            );
+          })}
       </div>
     </div>
   );
