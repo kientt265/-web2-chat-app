@@ -9,7 +9,10 @@ export const useSocket = (
   activeConversation: Conversation | null
 ) => {
   const socketRef = useRef<any>(null);
-
+  const activeConvRef = useRef<Conversation | null>(null);
+  useEffect(() => {
+    activeConvRef.current = activeConversation;
+  }, [activeConversation]);
   useEffect(() => {
     const socket = io('http://localhost:3002', {
       path: '/socket.io',
@@ -47,7 +50,7 @@ export const useSocket = (
 
     socket.on('new_msg_socker_user_personal', (message: Message) => {
       console.log('[Socket-Personal] 📩 Real-time message received:', message);
-      if(activeConversation?.conversation_id !== message.conversation_id) {
+      if (activeConvRef.current?.conversation_id !== message.conversation_id) {
         console.log('1', activeConversation?.conversation_id);
         console.log('2', message.conversation_id);
         setConversations((prev) =>
