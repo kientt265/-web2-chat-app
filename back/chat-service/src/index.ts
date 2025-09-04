@@ -3,6 +3,8 @@ import { Server } from 'socket.io';
 import {producer, consumer } from './config/kafka';
 import http from 'http';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
 import { config } from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import chatRoutes from './routes/chatRoutes';
@@ -13,6 +15,7 @@ config();
 const prisma = new PrismaClient();
 const app = express();
 const server = http.createServer(app);
+const swaggerDocument = YAML.load('./swagger.yaml');
 //cors for socket.io
 export const  io = new Server(server, {
   path: "/socket.io/",
@@ -36,10 +39,12 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use('/', chatRoutes);
 app.get('/run', (req, res) => {
   res.send('Chat Service is running');
 });
+
 
 server.listen(port, async () => {
     console.log('\n=== Chat Service Status ===');

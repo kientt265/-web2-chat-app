@@ -1,0 +1,563 @@
+openapi: 3.0.0
+info:
+  title: Chat Application API
+  version: 1.0.0
+  description: API documentation cho Auth Service và Chat Service
+
+servers:
+  - url: http://localhost:80/api/
+    description: API endpoint
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+    User:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+    Message:
+      type: object
+      properties:
+        message_id:
+          type: string
+          format: uuid
+        conversation_id:
+          type: string
+          format: uuid
+        sender_id:
+          type: string
+          format: uuid
+        content:
+          type: string
+        sent_at:
+          type: string
+          format: date-time
+        is_read:
+          type: boolean
+    Conversation:
+      type: object
+      properties:
+        conversation_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [private, group]
+        name:
+          type: string
+          nullable: true
+        subtype:
+          type: string
+          enum: [normal, secret]
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        member_count:
+          type: integer
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+        last_message:
+          $ref: '#/components/schemas/Message'
+          nullable: true
+    Member:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        pubkey:
+          type: string
+          nullable: true
+        joined_at:
+          type: string
+          format: date-time
+        last_read_message_id:
+          type: string
+          format: uuid
+          nullable: true
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Đăng ký tài khoản mới
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '201':
+          description: Tài khoản đã được tạo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Đăng nhập
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Thông tin đăng nhập không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /messages/{conversation_id}:
+    get:
+      tags:
+        - Messages
+      summary: Lấy danh sách tin nhắn của một cuộc trò chuyện
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Danh sách tin nhắn
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Message'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Lỗi server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /messages:
+    post:
+      tags:
+        - Messages
+      summary: Gửi tin nhắn mới
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - conversation_id
+                - content
+              properties:
+                conversation_id:
+                  type: string
+                  format: uuid
+                content:
+                  type: string
+      responses:
+        '201':
+          description: Tin nhắn đã được tạo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Không có quyền gửi tin nhắn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /conversations:
+    get:
+      tags:
+        - Conversations
+      summary: Lấy danh sách cuộc trò chuyện của người dùng
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Danh sách cuộc trò chuyện
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Conversation'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      tags:
+        - Conversations
+      summary: Tạo cuộc trò chuyện mới
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - user_ids
+              properties:
+                type:
+                  type: string
+                  enum: [private, group]
+                name:
+                  type: string
+                user_ids:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      user_id:
+                        type: string
+                        format: uuid
+                subtype:
+                  type: string
+                  enum: [normal, secret]
+                pubkey:
+                  type: string
+      responses:
+        '201':
+          description: Cuộc trò chuyện đã được tạo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /conversations/{conversation_id}/accept:
+    patch:
+      tags:
+        - Conversations
+      summary: Chấp nhận cuộc trò chuyện bí mật
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - pubkey
+              properties:
+                pubkey:
+                  type: string
+      responses:
+        '200':
+          description: Đã chấp nhận cuộc trò chuyện
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy cuộc trò chuyện
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /conversations/{conversation_id}:
+    delete:
+      tags:
+        - Conversations
+      summary: Rời khỏi cuộc trò chuyện
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Đã rời khỏi cuộc trò chuyện
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy cuộc trò chuyện
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /conversations/{conversation_id}/upload:
+    post:
+      tags:
+        - Conversations
+      summary: Tải lên hình ảnh trong cuộc trò chuyện
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Đã tải lên hình ảnh thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy cuộc trò chuyện
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /conversations/update_last_read_msg:
+    post:
+      tags:
+        - Conversations
+      summary: Cập nhật tin nhắn cuối cùng đã đọc
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - conversation_id
+                - message_id
+              properties:
+                conversation_id:
+                  type: string
+                  format: uuid
+                message_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Đã cập nhật thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy cuộc trò chuyện hoặc tin nhắn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /conversations/add_new_user_group:
+    post:
+      tags:
+        - Conversations
+      summary: Thêm thành viên mới vào nhóm chat
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - conversation_id
+                - user_id
+              properties:
+                conversation_id:
+                  type: string
+                  format: uuid
+                user_id:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Đã thêm thành viên thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '401':
+          description: Chưa xác thực
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Không tìm thấy cuộc trò chuyện hoặc người dùng
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
