@@ -45,7 +45,8 @@ export const chatService = {
     }).then((res) => res.data),
   updateLastMsg: (data: {conversation_id: string, last_read_message_id: string}) =>
     api.post(`/chat/conversations/update_last_read_msg`, data).then((res) => res.data),
-  
+  addNewUserGroup: (data: {conversation_id: string, user_added_id: string}) => 
+    api.post(`/chat/'conversations/add_new_user_group`, data).then((res) => res.data),
 
 }
 // const { type, name, user_ids, subtype, pubkey } = req.body as {

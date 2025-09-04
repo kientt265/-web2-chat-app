@@ -54,9 +54,9 @@ export const createConversation = async (req: Request, res: Response) => {
     if (type === 'private' && !subtype) {
       return res.status(400).json({ error: 'Private conversations must have a subtype (normal or secret)' });
     }
-    if (type !== 'private' && subtype) {
-      return res.status(400).json({ error: 'Only private conversations can have a subtype' });
-    }
+    // if (type !== 'private' && subtype) {
+    //   return res.status(400).json({ error: 'Only private conversations can have a subtype' });
+    // }
 
     const host_user_id = req.user?.user_id!;
 
@@ -365,3 +365,43 @@ export const updateLastSeenMsg = async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+export const addMemberToGroupChat = function (req: Request, res: Response) {
+  const { conversation_id, user_added_id } = req.body;
+  prisma.conversations.findUnique({
+    where: { conversation_id },
+  }).then((conversation) => {
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found" });
+    }
+    if (conversation.type !== "group") {
+      return res.status(400).json({ error: "Cannot add members to a non-group conversation" });
+    }
+    prisma.conversation_members.findUnique({
+      where: {
+        conversation_id_user_id: {
+          conversation_id,
+          user_id: user_added_id
+        },
+      },
+    }).then((existingMemebr) => {
+      if (existingMemebr) res.status(400).json({ error: "User already a member" });
+      prisma.conversation_members.create({
+        data: {
+          conversation_id,
+          user_id: user_added_id,
+        },
+      }).then((newMember) => {
+        res.status(201).json({
+          message: "Member added successfully",
+          member: newMember,
+        })
+      }).catch((error) => {
+        res.status(500).json(error);
+      })
+    }).catch((error) => {
+      res.status(404).json(error);
+    })
+  })
+    .catch((error) => { res.status(500).json(error) })
+}

@@ -29,7 +29,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
       <div className="divide-y">
         {conversations
-          .slice() // copy mảng tránh mutate state gốc
+          .slice() 
           .sort((a, b) => {
             const aTime = a.last_message
               ? new Date(a.last_message.sent_at).getTime()
@@ -37,7 +37,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             const bTime = b.last_message
               ? new Date(b.last_message.sent_at).getTime()
               : 0;
-            return bTime - aTime; // sort giảm dần: mới nhất lên trên
+            return bTime - aTime; 
           })
           .map((conv) => {
             const member = conv.members.find((mem) => mem.user_id === userId);
@@ -54,12 +54,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 }`}
                 onClick={() => handleConversationClick(conv)}
               >
-                {/* Tên cuộc trò chuyện */}
                 <h3 className="font-semibold">
                   {conv.name ? conv.name : conv.conversation_id}
                 </h3>
 
-                {/* Nội dung tin nhắn cuối */}
                 <p
                   className={`text-sm truncate ${
                     isUnread

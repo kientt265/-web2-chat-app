@@ -32,8 +32,6 @@ const ConversationForm: React.FC<ConversationFormProps> = ({
 
   const handleCreateConversation = async () => {
     try {
-
-
       console.log('[Chat] 📤 Creating new conversation:', conversationForm);
       const newConversation = await chatService.createConversation({
         type: conversationForm.type,
