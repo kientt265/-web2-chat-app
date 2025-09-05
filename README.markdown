@@ -26,6 +26,7 @@ The application is built on a microservice architecture with the following key c
 
 ### Key Features
 - 🚀 **Real-time messaging** with WebSocket support
+- 🔐 **Private chat message** with end-to-end encryption (E2EE)
 - 🔍 **Semantic search** across conversation history
 - 🤖 **AI agents** with LangChain for intelligent conversation assistance and tool calling
 - 🧠 **Intelligent routing** with specialized agents for tools, history, and general queries
@@ -35,6 +36,7 @@ The application is built on a microservice architecture with the following key c
 - 🔐 **Authentication system** with secure user managements
 - 🔄 **Service registry** for microservice coordination and discovery
 - 🐳 **Containerized deployment** with Docker Compose
+
 
 ## Prerequisites
 
