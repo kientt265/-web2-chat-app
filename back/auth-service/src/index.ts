@@ -3,6 +3,7 @@ import { config } from 'dotenv';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/authRoutes';
+import { connectKafkaProducer } from './kafka/producer';
 
 config();
 
@@ -18,6 +19,7 @@ app.get('/run', (req, res) => {
 });
 
 app.listen(port, async () => {
+  await connectKafkaProducer();
   console.log(`Auth Service is running on port ${port}`);
 });
 

@@ -1,7 +1,9 @@
 import { Request, Response } from 'express';
+
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { sendUserCreatedEvent } from '../kafka/producer';
 
 const prisma = new PrismaClient();
 const JWT_SECRET = 'your-secret-key'; 
@@ -17,6 +19,8 @@ export const register = async (req: Request, res: Response) => {
         password_hash,
       },
     });
+    // Push event to Kafka
+    await sendUserCreatedEvent({ user_id: user.user_id, username, email });
     res.status(201).json({ user_id: user.user_id, username, email });
   } catch (error) {
     console.error('Error registering user:', error);
